@@ -16,12 +16,12 @@ type loggedResponse struct {
 	content []byte
 }
 
-func (l *loggedResponse) writeHeader(status int) {
+func (l *loggedResponse) WriteHeader(status int) {
 	l.status = status
 	l.ResponseWriter.WriteHeader(status)
 }
 
-func (l *loggedResponse) write(content []byte) (int, error) {
+func (l *loggedResponse) Write(content []byte) (int, error) {
 	l.content = content
 	return l.ResponseWriter.Write(content)
 }
