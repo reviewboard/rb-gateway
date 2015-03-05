@@ -35,4 +35,18 @@ type Repository interface {
 	// if the file is found in the repository; false otherwise. If an error
 	// occurs, it will also be returned.
 	FileExistsByCommit(commit, filepath string) (bool, error)
+
+	// GetBranches returns all the branches in the repository as a JSON byte
+	// array. If an error occurs, it will also be returned.
+	GetBranches() ([]byte, error)
+
+	// GetCommit returns all the commits in the repository starting at the
+	// specified branch as a JSON byte array. It also takes an optional start
+	// commit id, which will return all commits starting from the start commit
+	// id instead. If an error occurs, it will also be returned.
+	GetCommits(branch string, start string) ([]byte, error)
+
+	// GetCommit returns the commit in the repository provided by the commit
+	// id as a JSON byte array. If an error occurs, it will also be returned.
+	GetCommit(commitId string) ([]byte, error)
 }
