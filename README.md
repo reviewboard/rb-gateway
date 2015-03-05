@@ -20,7 +20,8 @@ To start the server on localhost:8888:
 
 Dependencies
 ------------
-This project depends on [git2go](https://github.com/libgit2/git2go/).
+This project depends on [git2go](https://github.com/libgit2/git2go/) and
+[Gorilla web toolkit's mux package](http://www.gorillatoolkit.org/pkg/mux).
 
 rb-gateway will autofetch dependencies with `go get`.
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strings"
 )
@@ -15,26 +16,23 @@ const (
 	paramStartCommit = "start"  // the starting commit id
 )
 
-// getFile gets the contents of a file.
+// getFile gets the contents of a file, given the file id.
 //
 // If the request method is GET, this sends a response containing the file
 // blob, if it exists. Otherwise, it will send a 404 Not Found. If the request
 // method is HEAD, this sends a 200 OK response if the file exists. Otherwise,
 // it will send a 404 Not Found.
 //
-// Files can be retrieved either by providing a id, or a commit and file path
-// pair in the query parameters.
-//
-// ID URL: /file?repo=<repo>&id=<id>
-// Commit and file path URL: /file?repo=<repo>&commit=<commit>&path=<path>
+// URL: /repos/:repo/file/:id
+// Parameters:
+//     repo - The repository name specified in config.json.
+//     id - The file ID.
 func getFile(w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(paramRepository)
-	id := r.URL.Query().Get(paramId)
-	commit := r.URL.Query().Get(paramCommit)
-	path := r.URL.Query().Get(paramPath)
+	params := mux.Vars(r)
+	repoName := params[paramRepository]
+	id := params[paramId]
 
-	if len(repoName) != 0 &&
-		(len(id) != 0 || (len(commit) != 0 && len(path) != 0)) {
+	if len(repoName) != 0 && len(id) != 0 {
 		repo := GetRepository(repoName)
 		if repo == nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -43,7 +41,7 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case "GET":
-			blob, err := getFileBlob(id, commit, path, repo)
+			blob, err := repo.GetFile(id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			} else {
@@ -51,7 +49,7 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 				w.Write(blob)
 			}
 		case "HEAD":
-			exists, err := getFileExists(id, commit, path, repo)
+			exists, err := repo.FileExists(id)
 			if exists {
 				w.WriteHeader(http.StatusOK)
 			} else {
@@ -69,27 +67,68 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getFileBlob(id, commit, path string, repo Repository) ([]byte, error) {
-	if len(id) != 0 {
-		return repo.GetFile(id)
+// getFileByCommit gets the contents of a file, given the commit id and file
+// path.
+//
+// If the request method is GET, this sends a response containing the file
+// blob, if it exists. Otherwise, it will send a 404 Not Found. If the request
+// method is HEAD, this sends a 200 OK response if the file exists. Otherwise,
+// it will send a 404 Not Found.
+//
+// URL: /repos/:repo/commits/:commit/path/:path
+// Parameters:
+//     repo - The repository name specified in config.json.
+//     commit - The commit ID to retrieve the file revision from.
+//     path - The relative path of the file.
+func getFileByCommit(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	repoName := params[paramRepository]
+	commit := params[paramCommit]
+	path := params[paramPath]
+
+	if len(repoName) != 0 && len(commit) != 0 && len(path) != 0 {
+		repo := GetRepository(repoName)
+		if repo == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		switch r.Method {
+		case "GET":
+			blob, err := repo.GetFileByCommit(commit, path)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			} else {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Write(blob)
+			}
+		case "HEAD":
+			exists, err := repo.FileExistsByCommit(commit, path)
+			if exists {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	} else {
+		http.Error(w, "Repository, Commit ID, or File path not specified",
+			http.StatusBadRequest)
 	}
-
-	return repo.GetFileByCommit(commit, path)
-}
-
-func getFileExists(id, commit, path string, repo Repository) (bool, error) {
-	if len(id) != 0 {
-		return repo.FileExists(id)
-	}
-
-	return repo.FileExistsByCommit(commit, path)
 }
 
 // getPath retrieves the path of a valid repository.
 //
-// URL: /path?repo=<repo>
+// URL: /repos/:repo/path
+// Parameters:
+//     repo - The repository name specified in config.json.
 func getPath(w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(paramRepository)
+	repoName := mux.Vars(r)[paramRepository]
 
 	if len(repoName) != 0 {
 		repo := GetRepository(strings.Split(repoName, "/")[0])
@@ -114,9 +153,11 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 // On success this responds with a 200 OK response, and a JSON representation
 // of the branches.
 //
-// URL: /branches?repo=<repo>
+// URL: /repos/:repo/branches
+// Parameters:
+//     repo - The repository name specified in config.json.
 func getBranches(w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(paramRepository)
+	repoName := mux.Vars(r)[paramRepository]
 
 	if len(repoName) != 0 {
 		repo := GetRepository(repoName)
@@ -146,15 +187,15 @@ func getBranches(w http.ResponseWriter, r *http.Request) {
 // On success this responds with a 200 OK response, and a JSON representation
 // of the commits.
 //
-// The repository and branch id is mandatory and must be provided. An optional
-// starting commit ID may also be provided. If the starting commit ID
-// is provided, all commits on the branch starting from the starting commit ID
-// will be returned.
-//
-// URL: /commits?repo=<repo>&branch=<branch>&start=<optional_starting_commit>
+// URL: /repos/:repo/branches/:branch/commits
+// Parameters:
+//     repo - The repository name specified in config.json
+//     branch - The branch ID.
+//     start (optional) -  The commit ID to start listing commits from.
 func getCommits(w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(paramRepository)
-	branch := r.URL.Query().Get(paramBranch)
+	params := mux.Vars(r)
+	repoName := params[paramRepository]
+	branch := params[paramBranch]
 	start := r.URL.Query().Get(paramStartCommit)
 
 	if len(repoName) != 0 && len(branch) != 0 {
@@ -187,10 +228,14 @@ func getCommits(w http.ResponseWriter, r *http.Request) {
 // On success this responds with a 200 OK response, and a JSON representation
 // of the commit.
 //
-// URL: /change?repo=<repo>&branch=<branch>
+// URL: /repos/:repo/commits/:id
+// Parameters:
+//     repo - The repository name specified in config.json.
+//     id - The commit ID.
 func getCommit(w http.ResponseWriter, r *http.Request) {
-	repoName := r.URL.Query().Get(paramRepository)
-	commit := r.URL.Query().Get(paramCommit)
+	params := mux.Vars(r)
+	repoName := params[paramRepository]
+	commit := params[paramId]
 
 	if len(repoName) != 0 && len(commit) != 0 {
 		repo := GetRepository(repoName)
@@ -251,10 +296,21 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 
 // Route handles all the URL routing.
 func Route() {
-	http.HandleFunc("/file", BasicAuth(getFile))
-	http.HandleFunc("/path", BasicAuth(getPath))
-	http.HandleFunc("/branches", BasicAuth(getBranches))
-	http.HandleFunc("/commits", BasicAuth(getCommits))
-	http.HandleFunc("/commit", BasicAuth(getCommit))
-	http.HandleFunc("/session", getSession)
+	router := mux.NewRouter()
+
+	routes := map[string]handler{
+		"/repos/{repo}/file/{id}":                    BasicAuth(getFile),
+		"/repos/{repo}/commits/{commit}/path/{path}": BasicAuth(getFileByCommit),
+		"/repos/{repo}/path":                         BasicAuth(getPath),
+		"/repos/{repo}/branches":                     BasicAuth(getBranches),
+		"/repos/{repo}/branches/{branch}/commits":    BasicAuth(getCommits),
+		"/repos/{repo}/commits/{id}":                 BasicAuth(getCommit),
+		"/session":                                   getSession,
+	}
+
+	for route, handler := range routes {
+		router.HandleFunc(route, handler)
+	}
+
+	http.Handle("/", router)
 }
