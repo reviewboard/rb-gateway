@@ -281,7 +281,8 @@ func (repo *GitRepository) GetCommits(branch string,
 			commit.Author().Name,
 			commit.Id().String(),
 			commit.Author().When.String(),
-			commit.Message(), parent,
+			commit.Message(),
+			parent,
 		}
 
 		commits = append(commits, gitCommit)
@@ -350,53 +351,51 @@ func (repo *GitRepository) GetCommit(commitId string) ([]byte, error) {
 	var parent string
 	var diff string
 
+	commitTree, err := commit.Tree()
+	if err != nil {
+		return nil, err
+	}
+
+	options, err := git.DefaultDiffOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	// Specifying full patch indices.
+	options.IdAbbrev = patchIndexLength
+
+	var parentTree *git.Tree
 	if commit.ParentCount() > 0 {
-		parentCommit := commit.Parent(0)
-		parent = parentCommit.Id().String()
+		parent = commit.Parent(0).Id().String()
+		parentTree, err = commit.Parent(0).Tree()
+		if err != nil {
+			return nil, err
+		}
+	}
 
-		parentTree, err := parentCommit.Tree()
+	gitDiff, err := gitRepo.DiffTreeToTree(parentTree, commitTree, &options)
+	if err != nil {
+		return nil, err
+	}
+
+	deltas, err := gitDiff.NumDeltas()
+	if err != nil {
+		return nil, err
+	}
+
+	if deltas > 0 {
+		patch, err := gitDiff.Patch(0)
 		if err != nil {
 			return nil, err
 		}
 
-		commitTree, err := commit.Tree()
+		patchString, err := patch.String()
 		if err != nil {
 			return nil, err
 		}
 
-		diffOptions, err := git.DefaultDiffOptions()
-		if err != nil {
-			return nil, err
-		}
-
-		// Specifying full patch indices.
-		diffOptions.IdAbbrev = patchIndexLength
-
-		gitDiff, err := gitRepo.DiffTreeToTree(parentTree,
-			commitTree, &diffOptions)
-		if err != nil {
-			return nil, err
-		}
-
-		deltas, err := gitDiff.NumDeltas()
-		if err != nil {
-			return nil, err
-		}
-
-		if deltas > 0 {
-			patch, err := gitDiff.Patch(0)
-			if err != nil {
-				return nil, err
-			}
-
-			patchString, err := patch.String()
-			if err != nil {
-				return nil, err
-			}
-
-			diff = patchString
-			patch.Free()
-		}
+		diff = patchString
+		patch.Free()
 	}
 
 	gitCommit := GitCommit{
