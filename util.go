@@ -11,15 +11,13 @@ var port int
 var username string
 var password string
 
-// LoadConfig loads the configuration file, config.json.
+// LoadConfig loads the configuration file at the specified path.
 // The configuration file is a json file containing repositories with their
 // corresponding file paths, the port number to run the server on, and the
 // authentication information for the admin user. Repository names specified
-// in config.json must be unique; they do not need to be the actual repository
-// name.
-func LoadConfig() {
-	const CONF_PATH = "config.json"
-
+// in the configuration file must be unique; they do not need to be the actual
+// repository name.
+func LoadConfig(path string) {
 	type Repo struct {
 		Name string
 		Path string
@@ -35,15 +33,15 @@ func LoadConfig() {
 
 	var conf Configuration
 
-	content, err := ioutil.ReadFile(CONF_PATH)
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Fatal("ReadFile: ", err,
-			"\nDid you set up ", CONF_PATH, " correctly?")
+			"\nDid you set up ", path, " correctly?")
 	}
 
 	if json.Unmarshal(content, &conf) != nil {
 		log.Fatal("Unmarshal: ", err,
-			"\nDid you set up ", CONF_PATH, " correctly?")
+			"\nDid you set up ", path, " correctly?")
 	}
 
 	port = conf.Port

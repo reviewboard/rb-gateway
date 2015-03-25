@@ -6,6 +6,10 @@ import (
 	"strconv"
 )
 
+const (
+	config = "config.json"
+)
+
 type logHTTPHandler struct {
 	handler http.Handler
 }
@@ -41,7 +45,7 @@ func (h *logHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	LoadConfig()
+	LoadConfig(config)
 
 	Route()
 
