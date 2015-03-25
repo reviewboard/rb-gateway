@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	commitsPageSize        = 30 // The max page size for commits.
+	commitsPageSize        = 20 // The max page size for commits.
 	branchesAllocationSize = 10 // The initial allocation size for branches.
 	patchIndexLength       = 40 // The patch index length.
 )
