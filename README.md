@@ -25,6 +25,10 @@ This project depends on [git2go](https://github.com/libgit2/git2go/) and
 
 rb-gateway will autofetch dependencies with `go get`.
 
+Testing
+-------
+`go test` will run automated tests against rb-gateway.
+
 License
 -------
 The MIT License (MIT)
