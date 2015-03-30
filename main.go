@@ -47,12 +47,12 @@ func (h *logHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 	LoadConfig(config)
 
-	Route()
-
 	log.Println("Starting rb-gateway server at port", GetPort())
 	log.Println("Quit the server with CONTROL-C.")
-	err := http.ListenAndServe(":"+strconv.Itoa(GetPort()),
-		&logHTTPHandler{http.DefaultServeMux})
+
+	handler := &logHTTPHandler{Route()}
+
+	err := http.ListenAndServe(":"+strconv.Itoa(GetPort()), handler)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}

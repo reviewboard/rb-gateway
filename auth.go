@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+const (
+	authPrivateToken = "PRIVATE-TOKEN"
+)
+
 type handler func(w http.ResponseWriter, r *http.Request)
 
 // BasicAuth relays all routes that require authentication checking.
@@ -16,7 +20,7 @@ type handler func(w http.ResponseWriter, r *http.Request)
 // otherwise it will raise an appropriate HTTP error.
 func BasicAuth(pass handler) handler {
 	return func(w http.ResponseWriter, r *http.Request) {
-		privateToken := r.Header.Get("PRIVATE-TOKEN")
+		privateToken := r.Header.Get(authPrivateToken)
 
 		if privateToken == "" {
 			http.Error(w, "Bad private token", http.StatusBadRequest)

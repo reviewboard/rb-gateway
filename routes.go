@@ -295,7 +295,7 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // Route handles all the URL routing.
-func Route() {
+func Route() *mux.Router {
 	router := mux.NewRouter()
 
 	routes := map[string]handler{
@@ -312,5 +312,5 @@ func Route() {
 		router.HandleFunc(route, handler)
 	}
 
-	http.Handle("/", router)
+	return router
 }
