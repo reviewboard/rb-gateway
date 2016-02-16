@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"gopkg.in/libgit2/git2go.v22"
 	"strings"
+
+	"gopkg.in/libgit2/git2go.v22"
 )
 
 const (
@@ -383,19 +385,25 @@ func (repo *GitRepository) GetCommit(commitId string) ([]byte, error) {
 		return nil, err
 	}
 
+	var buffer bytes.Buffer
+
 	if deltas > 0 {
-		patch, err := gitDiff.Patch(0)
-		if err != nil {
-			return nil, err
-		}
+		for i := 0; i < deltas; i++ {
+			patch, err := gitDiff.Patch(i)
+			if err != nil {
+				return nil, err
+			}
 
-		patchString, err := patch.String()
-		if err != nil {
-			return nil, err
-		}
+			patchString, err := patch.String()
+			if err != nil {
+				return nil, err
+			}
 
-		diff = patchString
-		patch.Free()
+			buffer.WriteString(patchString)
+
+			patch.Free()
+		}
+		diff = buffer.String()
 	}
 
 	gitCommit := GitCommit{

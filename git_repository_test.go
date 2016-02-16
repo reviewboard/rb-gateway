@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/libgit2/git2go.v22"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"gopkg.in/libgit2/git2go.v22"
 )
 
 const (
@@ -57,6 +58,8 @@ func seedTestRepo(t *testing.T, repo *git.Repository) (string, string) {
 	idx, err := repo.Index()
 	checkFatal(t, err)
 	err = idx.AddByPath(repoFile)
+	checkFatal(t, err)
+	err = idx.AddByPath(repoFile2)
 	checkFatal(t, err)
 	treeId, err := idx.WriteTree()
 	checkFatal(t, err)
@@ -319,8 +322,16 @@ func TestGetCommit(t *testing.T) {
 		"--- /dev/null\n"+
 		"+++ b/%s\n"+
 		"@@ -0,0 +1 @@\n"+
+		"+%s"+
+		"diff --git a/%s b/%s\n"+
+		"new file mode 100644\n"+
+		"index 0000000000000000000000000000000000000000..5716ca5987cbf97d6bb54920bea6adde242d87e6\n"+
+		"--- /dev/null\n"+
+		"+++ b/%s\n"+
+		"@@ -0,0 +1 @@\n"+
 		"+%s",
-		repoFile, repoFile, fileId, repoFile, repoFileContent)
+		repoFile, repoFile, fileId, repoFile, repoFileContent,
+		repoFile2, repoFile2, repoFile2, repoFileContent2)
 
 	if commit.Diff != diff {
 		t.Fatalf("Expected commit diff:\n%s\n, got:\n%s", diff, commit.Diff)
