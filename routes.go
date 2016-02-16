@@ -248,7 +248,7 @@ func getCommit(w http.ResponseWriter, r *http.Request) {
 			change, err := repo.GetCommit(commit)
 			if err != nil {
 				if strings.HasPrefix(err.Error(),
-					"Object not found - failed to find pack entry") {
+					"Object not found") {
 					http.Error(w, err.Error(), http.StatusNotFound)
 				} else if strings.HasPrefix(err.Error(),
 					"encoding/hex") {

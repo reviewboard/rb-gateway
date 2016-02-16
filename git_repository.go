@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"gopkg.in/libgit2/git2go.v22"
+	"gopkg.in/libgit2/git2go.v23"
 )
 
 const (

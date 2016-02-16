@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/libgit2/git2go.v22"
+	"gopkg.in/libgit2/git2go.v23"
 )
 
 const (
@@ -87,8 +87,7 @@ func branchTestRepo(t *testing.T, repo *git.Repository) (*git.Branch, string) {
 	checkFatal(t, err)
 	headCommit, err := repo.LookupCommit(head.Target())
 	checkFatal(t, err)
-	branch, err := repo.CreateBranch(repoBranch, headCommit, false,
-		sig, "Add a branch")
+	branch, err := repo.CreateBranch(repoBranch, headCommit, false)
 	checkFatal(t, err)
 
 	idx, err := repo.Index()
