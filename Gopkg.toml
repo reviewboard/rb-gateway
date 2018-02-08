@@ -1,0 +1,13 @@
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+[[constraint]]
+  name = "github.com/gorilla/mux"
+  version = "1.6.1"
+
+[[constraint]]
+  name = "github.com/libgit2/git2go"
+  branch = "v24"
+
+[prune]
+  go-tests = true
+  unused-packages = true

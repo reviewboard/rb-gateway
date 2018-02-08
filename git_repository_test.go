@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/libgit2/git2go.v24"
+	"github.com/libgit2/git2go"
 )
 
 const (

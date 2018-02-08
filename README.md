@@ -4,26 +4,42 @@ A service for managing your repositories.
 
 Install
 -------
-Instructions to install rb-gateway in the `$GOPATH/src/` directory from the master branch:
 
-    $ go get -d github.com/reviewboard/rb-gateway
-    $ cd github.com/reviewboard/rb-gateway
-    $ mv sample_config.json config.json
-    $ go get
-    $ go install
+Dependencies are managed with [dep][dep]. You will need to install it to
+build rb-gateway.
 
-    Modify config.json to point to your repositories.
+Instructions to install rb-gateway in the `$GOPATH/src/` directory from the
+master branch:
+
+```sh
+$ go get -d github.com/reviewboard/rb-gateway
+$ cd github.com/reviewboard/rb-gateway
+$ mv sample_config.json config.json
+$ dep ensure
+$ go build
+```
+
+Then modify config.json to point to your repositories.
 
 To start the server on localhost:8888:
 
-    go run *.go
+```sh
+./rb-gateway
+```
+
+[dep]: https://github.com/golang/dep
 
 Dependencies
 ------------
-This project depends on [git2go](https://github.com/libgit2/git2go/) and
-[Gorilla web toolkit's mux package](http://www.gorillatoolkit.org/pkg/mux).
 
-rb-gateway will autofetch dependencies with `go get`.
+This project depends on:
+
+ - [git2go][git2go]
+ - [Gorilla web toolkit's mux package][mux]
+
+
+[git2go]: https://github.com/libgit2/git2go
+[mux]: https://www.gorillatoolkit.org/pkg/mux
 
 Testing
 -------
