@@ -69,8 +69,9 @@ func main() {
 		 * This allows us to give the server a grace period for finishing
 		 * in-progress requests before it closes all connections.
 		 */
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		server.Shutdown(ctx)
+		cancel()
 		log.Println("Server shut down.")
 
 		if shouldExit {
