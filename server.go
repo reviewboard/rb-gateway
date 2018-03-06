@@ -15,7 +15,7 @@ func NewServer(port int) http.Server {
 
 	return http.Server{
 		Addr:    addr,
-		Handler: logRequest{Route()},
+		Handler: logRequest(Route()),
 	}
 }
 

@@ -54,7 +54,7 @@ func TestLoadConfig(t *testing.T) {
 
 	configPort := GetPort()
 	if configPort != testPort {
-		t.Fatalf("Expected port '%s', got '%s'", configPort, testPort)
+		t.Fatalf("Expected port '%d', got '%d'", configPort, testPort)
 	}
 
 	configUser := GetUsername()
