@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-var repos map[string]Repository = make(map[string]Repository)
+var repos map[string]Repository
 var port int
 var username string
 var password string
@@ -48,14 +48,18 @@ func LoadConfig(path string) {
 	username = conf.Username
 	password = conf.Password
 
+	newRepos := make(map[string]Repository)
+
 	for _, r := range conf.Repositories {
 		switch r.Scm {
 		case "git":
-			repos[r.Name] = &GitRepository{RepositoryInfo{r.Name, r.Path}}
+			newRepos[r.Name] = &GitRepository{RepositoryInfo{r.Name, r.Path}}
 		default:
 			log.Println("Repository SCM type is not defined: ", r.Scm)
 		}
 	}
+
+	repos = newRepos
 }
 
 // GetRepository returns the repository based on the name specified in
