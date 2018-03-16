@@ -1,4 +1,4 @@
-package main
+package api
 
 // Represents a Session. Currently only holds the private_token, used for
 // authentication. This can be extended in the future to store more session

@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/base64"
@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	authPrivateToken = "PRIVATE-TOKEN"
+	PrivateTokenHeader = "PRIVATE-TOKEN"
 )
 
 type handler func(w http.ResponseWriter, r *http.Request)
@@ -22,7 +22,7 @@ type handler func(w http.ResponseWriter, r *http.Request)
 // otherwise it will raise an appropriate HTTP error.
 func BasicAuth(pass handler) handler {
 	return func(w http.ResponseWriter, r *http.Request) {
-		privateToken := r.Header.Get(authPrivateToken)
+		privateToken := r.Header.Get(PrivateTokenHeader)
 
 		if privateToken == "" {
 			http.Error(w, "Bad private token", http.StatusBadRequest)

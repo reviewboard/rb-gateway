@@ -12,6 +12,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/reviewboard/rb-gateway/api"
 	"github.com/reviewboard/rb-gateway/config"
 )
 
@@ -30,7 +31,10 @@ func main() {
 		log.Fatal("Could not load configuration: ", err)
 	}
 
-	server := NewServer(cfg.Port)
+	server := http.Server {
+		Addr: fmt.Sprintf(":%d", cfg.Port),
+		Handler: api.New(),
+	}
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)

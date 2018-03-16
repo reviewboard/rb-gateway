@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -295,25 +295,4 @@ func getSession(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
-}
-
-// Route handles all the URL routing.
-func Route() *mux.Router {
-	router := mux.NewRouter()
-
-	routes := map[string]handler{
-		"/repos/{repo}/file/{id}":                    BasicAuth(getFile),
-		"/repos/{repo}/commits/{commit}/path/{path}": BasicAuth(getFileByCommit),
-		"/repos/{repo}/path":                         BasicAuth(getPath),
-		"/repos/{repo}/branches":                     BasicAuth(getBranches),
-		"/repos/{repo}/branches/{branch}/commits":    BasicAuth(getCommits),
-		"/repos/{repo}/commits/{id}":                 BasicAuth(getCommit),
-		"/session":                                   getSession,
-	}
-
-	for route, handler := range routes {
-		router.HandleFunc(route, handler)
-	}
-
-	return router
 }

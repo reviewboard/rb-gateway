@@ -1,23 +1,14 @@
-package main
+package api
 
 import (
-	"fmt"
+	"encoding/base64"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
 const timeLayout = "02/Jan/2006:15:04:05 -0700"
-
-// Return a new RB Gateway HTTP server.
-func NewServer(port uint16) http.Server {
-	addr := fmt.Sprintf(":%d", port)
-
-	return http.Server{
-		Addr:    addr,
-		Handler: logRequest(Route()),
-	}
-}
 
 // A specialized `http.ResponseWriter` for logging.
 type loggingResponseWriter struct {
@@ -38,15 +29,15 @@ func (l *loggingResponseWriter) Write(content []byte) (int, error) {
 	return l.ResponseWriter.Write(content)
 }
 
-// Wrap an `http.Handler` in a closure that will log the request in Common log Format.
-func logRequest(handler http.Handler) http.Handler {
+// A middleware that provides logging for each HTTP request.
+func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := loggingResponseWriter{
 			ResponseWriter: w,
 			status:         200,
 			contentLen:     0,
 		}
-		handler.ServeHTTP(&logger, r)
+		next.ServeHTTP(&logger, r)
 		log.Printf("%s - - [%s] \"%s %s %s\" %d %d",
 			r.RemoteAddr,
 			time.Now().Format(timeLayout),
@@ -55,5 +46,26 @@ func logRequest(handler http.Handler) http.Handler {
 			r.Proto,
 			logger.status,
 			logger.contentLen)
+	})
+}
+
+func authenticationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		privateToken := r.Header.Get(PrivateTokenHeader)
+
+		if privateToken == "" {
+			http.Error(w, "Bad private token", http.StatusBadRequest)
+			return
+		}
+
+		payload, _ := base64.StdEncoding.DecodeString(privateToken)
+		pair := strings.SplitN(string(payload), ":", 2)
+
+		if len(pair) != 2 || !validate(pair[0], pair[1]) {
+			http.Error(w, "Authorization failed", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }

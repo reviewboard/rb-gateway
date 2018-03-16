@@ -1,4 +1,4 @@
-package main
+package api_test
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/reviewboard/rb-gateway/api"
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/helpers"
 )
@@ -20,7 +21,7 @@ const (
 func testRoute(url, method string, t *testing.T) *httptest.ResponseRecorder {
 	t.Helper()
 
-	mux := Route()
+	mux := api.New()
 
 	response := httptest.NewRecorder()
 
@@ -28,10 +29,10 @@ func testRoute(url, method string, t *testing.T) *httptest.ResponseRecorder {
 	assert.Nil(t, err)
 
 	request.SetBasicAuth(config.GetUsername(), config.GetPassword())
-	session, err := CreateSession(request)
+	session, err := api.CreateSession(request)
 	assert.Nil(t, err)
 
-	request.Header.Set(authPrivateToken, session.PrivateToken)
+	request.Header.Set(api.PrivateTokenHeader, session.PrivateToken)
 
 	mux.ServeHTTP(response, request)
 
@@ -266,9 +267,9 @@ func TestGetSessionAPI(t *testing.T) {
 	request.SetBasicAuth(config.GetUsername(), config.GetPassword())
 
 	response := httptest.NewRecorder()
-	Route().ServeHTTP(response, request)
+	api.New().ServeHTTP(response, request)
 
-	var session Session
+	var session api.Session
 
 	assert.Nil(t, json.Unmarshal(response.Body.Bytes(), &session))
 
