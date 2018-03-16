@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/reviewboard/rb-gateway/config"
 )
 
 const (
@@ -68,7 +70,7 @@ func CreateSession(r *http.Request) (Session, error) {
 // validate against the single user stored in the config file.
 // It returns true if the username and password matches what is in config.json.
 func validate(username, password string) bool {
-	if username == GetUsername() && password == GetPassword() {
+	if username == config.GetUsername() && password == config.GetPassword() {
 		return true
 	}
 	return false

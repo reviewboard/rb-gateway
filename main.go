@@ -2,19 +2,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-)
 
-const (
-	config = "config.json"
+	"github.com/reviewboard/rb-gateway/config"
 )
 
 func main() {
@@ -23,13 +21,16 @@ func main() {
 		log.Fatal("Could not watch configuration: ", err)
 	}
 
-	if err = watcher.Add(config); err != nil {
+	if err = watcher.Add(config.DefaultConfigPath); err != nil {
 		log.Fatal("Could not watch configuration: ", err)
 	}
 
-	LoadConfig(config)
+	cfg, err := config.Load(config.DefaultConfigPath)
+	if err != nil {
+		log.Fatal("Could not load configuration: ", err)
+	}
 
-	server := NewServer(GetPort())
+	server := NewServer(cfg.Port)
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
@@ -39,7 +40,7 @@ func main() {
 
 	for {
 		shouldExit := false
-		log.Println("Starting rb-gateway server on port", GetPort())
+		log.Println("Starting rb-gateway server on port", cfg.Port)
 		log.Println("Quit the server with CONTROL-C.")
 
 		go func() {
@@ -78,7 +79,10 @@ func main() {
 			os.Exit(0)
 		}
 
-		LoadConfig(config)
-		server.Addr = ":" + strconv.Itoa(GetPort())
+		cfg, err = config.Load(config.DefaultConfigPath)
+		if err != nil {
+			log.Fatal("Could not load configuration: ", err)
+		}
+		server.Addr = fmt.Sprintf(":%d", cfg.Port)
 	}
 }

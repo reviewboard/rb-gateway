@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"net/http"
 	"strings"
+
+	"github.com/gorilla/mux"
+
+	"github.com/reviewboard/rb-gateway/config"
 )
 
 const (
@@ -33,7 +36,7 @@ func getFile(w http.ResponseWriter, r *http.Request) {
 	id := params[paramId]
 
 	if len(repoName) != 0 && len(id) != 0 {
-		repo := GetRepository(repoName)
+		repo := config.GetRepository(repoName)
 		if repo == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -87,7 +90,7 @@ func getFileByCommit(w http.ResponseWriter, r *http.Request) {
 	path := params[paramPath]
 
 	if len(repoName) != 0 && len(commit) != 0 && len(path) != 0 {
-		repo := GetRepository(repoName)
+		repo := config.GetRepository(repoName)
 		if repo == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -131,7 +134,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 	repoName := mux.Vars(r)[paramRepository]
 
 	if len(repoName) != 0 {
-		repo := GetRepository(strings.Split(repoName, "/")[0])
+		repo := config.GetRepository(strings.Split(repoName, "/")[0])
 		if repo == nil {
 			http.Error(w, "Repository not found", http.StatusBadRequest)
 			return
@@ -139,7 +142,7 @@ func getPath(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method == "GET" {
 			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte(repo.GetPath() + "/info/refs"))
+			w.Write([]byte(repo.GetPath()))
 		} else {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -160,7 +163,7 @@ func getBranches(w http.ResponseWriter, r *http.Request) {
 	repoName := mux.Vars(r)[paramRepository]
 
 	if len(repoName) != 0 {
-		repo := GetRepository(repoName)
+		repo := config.GetRepository(repoName)
 		if repo == nil {
 			http.Error(w, "Repository not found", http.StatusNotFound)
 			return
@@ -199,7 +202,7 @@ func getCommits(w http.ResponseWriter, r *http.Request) {
 	start := r.URL.Query().Get(paramStartCommit)
 
 	if len(repoName) != 0 && len(branch) != 0 {
-		repo := GetRepository(repoName)
+		repo := config.GetRepository(repoName)
 		if repo == nil {
 			http.Error(w, "Repository not found", http.StatusNotFound)
 			return
@@ -238,7 +241,7 @@ func getCommit(w http.ResponseWriter, r *http.Request) {
 	commit := params[paramId]
 
 	if len(repoName) != 0 && len(commit) != 0 {
-		repo := GetRepository(repoName)
+		repo := config.GetRepository(repoName)
 		if repo == nil {
 			http.Error(w, "Repository not found", http.StatusNotFound)
 			return

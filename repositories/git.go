@@ -32,6 +32,10 @@ func (repo *GitRepository) GetPath() string {
 	return repo.Path
 }
 
+func (repo *GitRepository) GetScm() string {
+	return "git"
+}
+
 // GetFile is a Repository implementation that returns the contents of a file
 // in the GitRepository based on the file revision sha. On success, it returns
 // the file contents in a byte array. On failure, the error will be returned.

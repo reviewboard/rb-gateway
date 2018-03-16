@@ -3,90 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
-	git "github.com/libgit2/git2go"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/helpers"
 )
 
 const (
 	routesTestInvalidId = "a30e45f1dadd788d9c0f8b0fe829329cce0e31d1"
 )
-
-var (
-	routesTestRepoPath   string
-	routesTestFileId     string
-	routesTestCommitId   string
-	routesTestFilename   string
-	routesTestBranchName string
-)
-
-func routesTestSetup(t *testing.T, rawRepo *git.Repository) string {
-	t.Helper()
-
-	file, err := ioutil.TempFile("", "rb-gateway-config")
-	defer file.Close()
-	assert.Nil(t, err)
-
-	commitId := helpers.SeedTestRepo(t, rawRepo)
-	branch := helpers.CreateTestBranch(t, rawRepo)
-	content := fmt.Sprintf(
-		`{
-			"port": 8888,
-			"username": "%s",
-			"password": "%s",
-			"repositories": [
-				{
-					"name": "%s",
-					"path": "%s",
-					"scm": "git"
-				}
-			]
-		}
-		`, testUser, testPass, testRepoName, rawRepo.Workdir())
-
-	_, err = file.Write([]byte(content))
-	assert.Nil(t, err)
-
-	routesTestRepoPath = rawRepo.Workdir()
-
-	commit, err := rawRepo.LookupCommit(branch.Target())
-	assert.Nil(t, err)
-
-	tree, err := commit.Tree()
-	assert.Nil(t, err)
-
-	var filename = ""
-	for filename = range helpers.GetRepoFiles() {
-		break
-	}
-	routesTestFilename = filename
-
-	assert.NotEqual(t, filename, "")
-	entry := tree.EntryByName("README")
-
-	routesTestFileId = entry.Id.String()
-	routesTestCommitId = commitId.String()
-	routesTestBranchName, err = branch.Name()
-	assert.Nil(t, err)
-
-	LoadConfig(file.Name())
-
-	return file.Name()
-}
-
-func routesTestTeardown(t *testing.T, configPath string) {
-	t.Helper()
-
-	os.RemoveAll(routesTestRepoPath)
-	os.Remove(configPath)
-}
 
 func testRoute(url, method string, t *testing.T) *httptest.ResponseRecorder {
 	t.Helper()
@@ -98,7 +27,7 @@ func testRoute(url, method string, t *testing.T) *httptest.ResponseRecorder {
 	request, err := http.NewRequest(method, url, nil)
 	assert.Nil(t, err)
 
-	request.SetBasicAuth(testUser, testPass)
+	request.SetBasicAuth(config.GetUsername(), config.GetPassword())
 	session, err := CreateSession(request)
 	assert.Nil(t, err)
 
@@ -118,150 +47,223 @@ func testStatusCode(expected int, response *httptest.ResponseRecorder, t *testin
 }
 
 func TestGetFileAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
+
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	// Testing valid file id
-	url := fmt.Sprintf("/repos/%s/file/%s", testRepoName, routesTestFileId)
+	url := fmt.Sprintf("/repos/%s/file/%s", repo.Name, fileId)
 	testStatusCode(http.StatusOK, testRoute(url, "GET", t), t)
 
 	// Testing invalid file id
-	url = fmt.Sprintf("/repos/%s/file/%s", testRepoName, routesTestInvalidId)
+	url = fmt.Sprintf("/repos/%s/file/%s", repo.Name, routesTestInvalidId)
 	testStatusCode(http.StatusBadRequest, testRoute(url, "GET", t), t)
 
 }
 
 func TestFileExistsAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
+
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	// Testing valid file
-	url := fmt.Sprintf("/repos/%s/file/%s", testRepoName, routesTestFileId)
+	url := fmt.Sprintf("/repos/%s/file/%s", "repo", fileId)
 	testStatusCode(http.StatusOK, testRoute(url, "HEAD", t), t)
 
 	// Testing invalid file id
-	url = fmt.Sprintf("/repos/%s/file/%s", testRepoName, routesTestInvalidId)
+	url = fmt.Sprintf("/repos/%s/file/%s", "repo", routesTestInvalidId)
 	testStatusCode(http.StatusNotFound, testRoute(url, "HEAD", t), t)
 
 	// Testing file id with bad formatroute.
-	url = fmt.Sprintf("/repos/%s/file/%s", testRepoName, "bad-id")
+	url = fmt.Sprintf("/repos/%s/file/%s", "repo", "bad-id")
 	testStatusCode(http.StatusBadRequest, testRoute(url, "HEAD", t), t)
 
 }
 
-func TestGetFileByCommitAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+func testGetFileByCommitAPI(t *testing.T) {
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
+
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	head := helpers.GetRepoHead(t, rawRepo).String()
 
 	// Testing valid commit and file path
-	url := fmt.Sprintf("/repos/%s/commits/%s/path/%s", testRepoName, routesTestCommitId, routesTestFilename)
+	url := fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "README")
 	testStatusCode(http.StatusOK, testRoute(url, "GET", t), t)
 
 	// Testing invalid file path
-	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", testRepoName, routesTestCommitId, "bad-file-path")
+	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "bad-file-path")
 	testStatusCode(http.StatusBadRequest, testRoute(url, "GET", t), t)
 
 	// Testing invalid commit
-	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", testRepoName, "bad-commit", routesTestFilename)
+	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", "bad-commit", "README")
 	testStatusCode(http.StatusBadRequest, testRoute(url, "GET", t), t)
 }
 
 func TestFileExistsByCommitAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
+
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	head := helpers.GetRepoHead(t, rawRepo).String()
 
 	// Testing valid commit and file path
-	url := fmt.Sprintf("/repos/%s/commits/%s/path/%s", testRepoName, routesTestCommitId, routesTestFilename)
+	url := fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "README")
 	testStatusCode(http.StatusOK, testRoute(url, "HEAD", t), t)
 
 	// Testing invalid file path
-	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", testRepoName, routesTestCommitId, "bad-file-path")
+	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "bad-file-path")
 	testStatusCode(http.StatusBadRequest, testRoute(url, "HEAD", t), t)
 }
 
 func TestGetPathAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
 
-	url := fmt.Sprintf("/repos/%s/path", testRepoName)
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	url := fmt.Sprintf("/repos/%s/path", "repo")
 	response := testRoute(url, "GET", t)
 
 	testStatusCode(http.StatusOK, response, t)
 
-	if string(response.Body.Bytes()) != routesTestRepoPath+"/info/refs" {
-		t.Errorf("Expected repo path '%s', got '%s'",
-			routesTestRepoPath+"/info/refs", string(response.Body.Bytes()))
-	}
+	assert.Equal(t, string(response.Body.Bytes()), repo.Path)
 }
 
 func TestGetBranchesAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
 
-	url := fmt.Sprintf("/repos/%s/branches", testRepoName)
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	url := fmt.Sprintf("/repos/%s/branches", "repo")
 	testStatusCode(http.StatusOK, testRoute(url, "GET", t), t)
 }
 
 func TestGetCommitsAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	branch := helpers.CreateTestBranch(t, rawRepo)
 
-	url := fmt.Sprintf("/repos/%s/branches/%s/commits", testRepoName, routesTestBranchName)
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	branchName, err := branch.Name()
+	assert.Nil(t, err)
+
+	url := fmt.Sprintf("/repos/%s/branches/%s/commits", "repo", branchName)
 	testStatusCode(http.StatusOK, testRoute(url, "GET", t), t)
 }
 
 func TestGetCommitAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
+
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
+
+	head := helpers.GetRepoHead(t, rawRepo).String()
 
 	// Testing valid commit id
-	url := fmt.Sprintf("/repos/%s/commits/%s", testRepoName, routesTestCommitId)
+	url := fmt.Sprintf("/repos/%s/commits/%s", "repo", head)
 	testStatusCode(http.StatusOK, testRoute(url, "GET", t), t)
 
 	// Testing invalid commit id
-	url = fmt.Sprintf("/repos/%s/commits/%s", testRepoName, routesTestInvalidId)
+	url = fmt.Sprintf("/repos/%s/commits/%s", "repo", routesTestInvalidId)
 	testStatusCode(http.StatusNotFound, testRoute(url, "GET", t), t)
 
 	// Testing invalid commit id with bad format
-	url = fmt.Sprintf("/repos/%s/commits/%s", testRepoName, "bad-commit-format")
+	url = fmt.Sprintf("/repos/%s/commits/%s", "repo", "bad-commit-format")
 	testStatusCode(http.StatusBadRequest, testRoute(url, "GET", t), t)
 }
 
 func TestGetSessionAPI(t *testing.T) {
-	_, rawRepo := helpers.CreateTestRepo(t, testRepoName)
+	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, rawRepo)
 
-	configPath := routesTestSetup(t, rawRepo)
-	defer routesTestTeardown(t, configPath)
+	helpers.SeedTestRepo(t, rawRepo)
+	helpers.CreateTestBranch(t, rawRepo)
+
+	cfg := helpers.CreateTestConfig(t, repo)
+	path := helpers.WriteTestConfig(t, cfg)
+	defer helpers.CleanupConfig(t, path)
+
+	_, err := config.Load(path)
+	assert.Nil(t, err)
 
 	request, err := http.NewRequest("GET", "/session", nil)
 	assert.Nil(t, err)
 
-	request.SetBasicAuth(GetUsername(), GetPassword())
+	request.SetBasicAuth(config.GetUsername(), config.GetPassword())
 
 	response := httptest.NewRecorder()
 	Route().ServeHTTP(response, request)

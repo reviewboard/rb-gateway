@@ -10,7 +10,7 @@ import (
 const timeLayout = "02/Jan/2006:15:04:05 -0700"
 
 // Return a new RB Gateway HTTP server.
-func NewServer(port int) http.Server {
+func NewServer(port uint16) http.Server {
 	addr := fmt.Sprintf(":%d", port)
 
 	return http.Server{

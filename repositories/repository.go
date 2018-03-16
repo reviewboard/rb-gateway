@@ -17,6 +17,9 @@ type Repository interface {
 	// GetPath returns the path of the repository.
 	GetPath() string
 
+	// Return the name of the SCM.
+	GetScm() string
+
 	// GetFile takes a file ID and returns the file contents as a byte array.
 	// If an error occurs, it will also be returned.
 	GetFile(id string) ([]byte, error)
