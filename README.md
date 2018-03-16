@@ -43,7 +43,8 @@ This project depends on:
 
 Testing
 -------
-`go test` will run automated tests against rb-gateway.
+
+Run `go test ./...` to run tests for rb-gateway and all sub-packages.
 
 License
 -------

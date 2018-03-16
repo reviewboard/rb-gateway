@@ -1,4 +1,4 @@
-package main
+package repositories
 
 // RepositoryInfo is a generic representation of a repository, containing
 // a name and a path to the repository.

@@ -1,50 +1,65 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"testing"
+
+	git "github.com/libgit2/git2go"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/reviewboard/rb-gateway/helpers"
+	"github.com/reviewboard/rb-gateway/repositories"
 )
 
 const (
-	testPort = 8888
-	testUser = "myuser"
-	testPass = "mypass"
+	testPort     = 8888
+	testUser     = "myuser"
+	testPass     = "mypass"
+	testRepoName = "testrepo"
 )
 
-func createTestConfig(t *testing.T) (string, *GitRepository) {
+func createTestConfig(t *testing.T) (string, *repositories.GitRepository, *git.Repository) {
+	t.Helper()
+
 	path, err := ioutil.TempFile("", "rb-gateway-config")
-	checkFatal(t, err)
+	assert.Nil(t, err)
 
-	repo, _ := createTestRepo(t)
+	repo, rawRepo := helpers.CreateTestRepo(t, testRepoName)
 
-	content := "{" +
-		"\"port\":" + strconv.Itoa(testPort) + "," +
-		"\"username\": \"" + testUser + "\"," +
-		"\"password\": \"" + testPass + "\"," +
-		"\"repositories\": " +
-		"[{\"name\": \"testrepo\"," +
-		"\"path\": \"" + repo.Path + "\"," +
-		"\"scm\": \"git\"}]" +
-		"}"
+	content := fmt.Sprintf(
+		`{
+			"port": %d,
+			"username": "%s",
+			"password": "%s",
+			"repositories": [
+				{
+					"name": "%s",
+					"path": "%s",
+					"scm": "git"
+				}
+			]
+		}
+		`, testPort, testUser, testPass, testRepoName, repo.Path)
 
 	err = ioutil.WriteFile(path.Name(), []byte(content), 0644)
-	checkFatal(t, err)
+	assert.Nil(t, err)
 
-	return path.Name(), repo
+	return path.Name(), repo, rawRepo
 }
 
 func TestLoadConfig(t *testing.T) {
-	path, repo := createTestConfig(t)
-	defer os.RemoveAll(repo.GetPath())
+	path, repo, rawRepo := createTestConfig(t)
+
+	defer helpers.CleanupRepository(t, rawRepo)
 	defer os.RemoveAll(path)
 
 	LoadConfig(path)
 
-	repository := GetRepository(repoName)
+	repository := GetRepository(testRepoName)
 	if repository == nil {
-		t.Fatalf("Expected repository %s does not exist", repoName)
+		t.Fatalf("Expected repository %s does not exist", testRepoName)
 	}
 
 	repoPath := repository.GetPath()

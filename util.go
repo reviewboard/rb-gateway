@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+
+	"github.com/reviewboard/rb-gateway/repositories"
 )
 
-var repos map[string]Repository
+var repos map[string]repositories.Repository
 var port int
 var username string
 var password string
@@ -48,12 +50,12 @@ func LoadConfig(path string) {
 	username = conf.Username
 	password = conf.Password
 
-	newRepos := make(map[string]Repository)
+	newRepos := make(map[string]repositories.Repository)
 
 	for _, r := range conf.Repositories {
 		switch r.Scm {
 		case "git":
-			newRepos[r.Name] = &GitRepository{RepositoryInfo{r.Name, r.Path}}
+			newRepos[r.Name] = &repositories.GitRepository{repositories.RepositoryInfo{r.Name, r.Path}}
 		default:
 			log.Println("Repository SCM type is not defined: ", r.Scm)
 		}
@@ -64,7 +66,7 @@ func LoadConfig(path string) {
 
 // GetRepository returns the repository based on the name specified in
 // config.json.
-func GetRepository(name string) Repository {
+func GetRepository(name string) repositories.Repository {
 	return repos[name]
 }
 
