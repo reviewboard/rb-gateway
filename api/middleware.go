@@ -1,10 +1,8 @@
 package api
 
 import (
-	"encoding/base64"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -46,26 +44,5 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			r.Proto,
 			logger.status,
 			logger.contentLen)
-	})
-}
-
-func authenticationMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		privateToken := r.Header.Get(PrivateTokenHeader)
-
-		if privateToken == "" {
-			http.Error(w, "Bad private token", http.StatusBadRequest)
-			return
-		}
-
-		payload, _ := base64.StdEncoding.DecodeString(privateToken)
-		pair := strings.SplitN(string(payload), ":", 2)
-
-		if len(pair) != 2 || !validate(pair[0], pair[1]) {
-			http.Error(w, "Authorization failed", http.StatusUnauthorized)
-			return
-		}
-
-		next.ServeHTTP(w, r)
 	})
 }

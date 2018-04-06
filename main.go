@@ -31,9 +31,10 @@ func main() {
 		log.Fatal("Could not load configuration: ", err)
 	}
 
-	server := http.Server {
-		Addr: fmt.Sprintf(":%d", cfg.Port),
-		Handler: api.New(),
+	api := api.New(*cfg)
+	server := http.Server{
+		Addr:    fmt.Sprintf(":%d", cfg.Port),
+		Handler: &api,
 	}
 
 	hup := make(chan os.Signal, 1)
@@ -80,13 +81,14 @@ func main() {
 		log.Println("Server shut down.")
 
 		if shouldExit {
-			os.Exit(0)
+			break
 		}
 
 		cfg, err = config.Load(config.DefaultConfigPath)
 		if err != nil {
 			log.Fatal("Could not load configuration: ", err)
 		}
+		api.SetConfig(*cfg)
 		server.Addr = fmt.Sprintf(":%d", cfg.Port)
 	}
 }

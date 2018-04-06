@@ -12,10 +12,10 @@ import (
 )
 
 func CreateTestConfig(t *testing.T, repos ...repositories.Repository) config.Config {
-	cfg := config.Config {
-		Port: 8888,
-		Username: "username",
-		Password: "password",
+	cfg := config.Config{
+		Port:         8888,
+		Username:     "username",
+		Password:     "password",
 		Repositories: make(map[string]repositories.Repository),
 	}
 
