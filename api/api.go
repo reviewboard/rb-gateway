@@ -6,8 +6,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gorilla/mux"
 
@@ -20,12 +22,13 @@ const (
 )
 
 type API struct {
+	configLock sync.RWMutex
 	config config.Config
 	router *mux.Router
 }
 
 // Return a new router for the API.
-func New(cfg config.Config) API {
+func New(cfg config.Config) *API {
 	api := API{
 		config: cfg,
 		router: mux.NewRouter(),
@@ -60,11 +63,32 @@ func New(cfg config.Config) API {
 			Handler(route.handler)
 	}
 
-	return api
+	return &api
 }
 
 func (api *API) SetConfig(newConfig config.Config) {
+	api.configLock.Lock()
+	defer api.configLock.Unlock()
+
 	api.config = newConfig
+}
+
+func (api *API) Serve() *http.Server {
+	server := http.Server{
+		Addr:    fmt.Sprintf(":%d", api.config.Port),
+		Handler: loggingMiddleware(api.router),
+	}
+
+	go func() {
+		api.configLock.RLock()
+		defer api.configLock.RUnlock()
+
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("ListenAndServe:", err)
+		}
+	}()
+
+	return &server
 }
 
 // A middleware for wrapping routes that require a repository.
@@ -112,8 +136,14 @@ func (api API) withAuthorizationRequired(next http.Handler) http.Handler {
 	})
 }
 
-// Serve the HTTP request.
-func (api API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// Serve a request.
+//
+// This is only meant for unit tests since it acquires a lock for every request
+// that would normally only be acquired once in `api.Serve`
+func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	api.configLock.RLock()
+	defer api.configLock.RUnlock()
+
 	loggingMiddleware(api.router).ServeHTTP(w, r)
 }
 

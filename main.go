@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -32,10 +30,6 @@ func main() {
 	}
 
 	api := api.New(*cfg)
-	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: &api,
-	}
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
@@ -48,11 +42,7 @@ func main() {
 		log.Println("Starting rb-gateway server on port", cfg.Port)
 		log.Println("Quit the server with CONTROL-C.")
 
-		go func() {
-			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Fatal("listenAndServe: ", err)
-			}
-		}()
+		server := api.Serve()
 
 		select {
 		case <-watcher.Events:
@@ -89,6 +79,5 @@ func main() {
 			log.Fatal("Could not load configuration: ", err)
 		}
 		api.SetConfig(*cfg)
-		server.Addr = fmt.Sprintf(":%d", cfg.Port)
 	}
 }
