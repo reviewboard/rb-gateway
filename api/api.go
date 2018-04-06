@@ -35,7 +35,7 @@ func New(cfg config.Config) *API {
 	}
 
 	api.router.Path("/session").
-		Methods("GET").
+		Methods("GET", "POST").
 		HandlerFunc(api.getSession)
 
 	// The following routes all require authorization.
@@ -55,6 +55,7 @@ func New(cfg config.Config) *API {
 		{[]string{"HEAD"}, "/commits/{commit-id}/path/{path}", http.HandlerFunc(api.getFileExistsByCommit)},
 		{[]string{"GET"}, "/file/{file-id}", http.HandlerFunc(api.getFile)},
 		{[]string{"HEAD"}, "/file/{file-id}", http.HandlerFunc(api.getFileExists)},
+		{[]string{"GET"}, "/path", http.HandlerFunc(api.getPath)},
 	}
 
 	for _, route := range routeTable {

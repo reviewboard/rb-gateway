@@ -209,3 +209,16 @@ func (api API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 }
+
+// Return an HTTP OK if the user can access the repository.
+//
+// Review Board has shipped with rb-gateway support requiring this endpoint to
+// confirm access to the repository. However, all it does is check for a 200 OK.
+//
+// Since this is behind the authorization middleware, we can always just return
+// 200 OK.
+//
+// URL: `/repos/<repo>/path`
+func (api API) getPath(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
