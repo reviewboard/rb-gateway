@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -117,7 +118,10 @@ func (api API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) validateCredentials(username, password string) bool {
-	return username == api.config.Username && password == api.config.Password
+	validUsername := subtle.ConstantTimeCompare([]byte(username), []byte(api.config.Username))
+	validPassword := subtle.ConstantTimeCompare([]byte(password), []byte(api.config.Password))
+
+	return validUsername + validPassword == 2
 }
 
 func (api *API) CreateSession(r *http.Request) (*Session, error) {
