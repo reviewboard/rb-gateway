@@ -8,25 +8,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-
 	"github.com/reviewboard/rb-gateway/api"
 	"github.com/reviewboard/rb-gateway/config"
 )
 
 func main() {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal("Could not watch configuration: ", err)
-	}
+	var cfg *config.Config
+	configWatcher := config.Watch(config.DefaultConfigPath)
 
-	if err = watcher.Add(config.DefaultConfigPath); err != nil {
-		log.Fatal("Could not watch configuration: ", err)
-	}
+	select {
+	case cfg = <-configWatcher.NewConfig:
+		break
 
-	cfg, err := config.Load(config.DefaultConfigPath)
-	if err != nil {
-		log.Fatal("Could not load configuration: ", err)
+	case err := <-configWatcher.Errors:
+		log.Fatal("Could not watch configuration file: ", err)
 	}
 
 	api := api.New(*cfg)
@@ -38,6 +33,7 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	for {
+		var newCfg *config.Config = nil
 		shouldExit := false
 		log.Println("Starting rb-gateway server on port", cfg.Port)
 		log.Println("Quit the server with CONTROL-C.")
@@ -45,14 +41,19 @@ func main() {
 		server := api.Serve()
 
 		select {
-		case <-watcher.Events:
+		case newCfg = <-configWatcher.NewConfig:
 			log.Println("Detected configuration change, reloading...")
 
-		case watchErr := <-watcher.Errors:
-			log.Fatal("Unexpected error: ", watchErr)
+		case err := <-configWatcher.Errors:
+			log.Fatal("Unexpected error: ", err)
 
 		case <-hup:
 			log.Println("Received SIGHUP, reloading configuration...")
+
+			var err error
+			if newCfg, err = configWatcher.ForceReload(); err != nil {
+				log.Fatal("Unexpected error: ", err)
+			}
 
 		case <-interrupt:
 			shouldExit = true
@@ -74,10 +75,9 @@ func main() {
 			break
 		}
 
-		cfg, err = config.Load(config.DefaultConfigPath)
-		if err != nil {
-			log.Fatal("Could not load configuration: ", err)
+		if newCfg != nil {
+			api.SetConfig(*newCfg)
+			log.Println("Configuration reloaded.")
 		}
-		api.SetConfig(*cfg)
 	}
 }

@@ -23,8 +23,8 @@ const (
 
 type API struct {
 	configLock sync.RWMutex
-	config config.Config
-	router *mux.Router
+	config     config.Config
+	router     *mux.Router
 }
 
 // Return a new router for the API.
@@ -152,7 +152,7 @@ func (api *API) validateCredentials(username, password string) bool {
 	validUsername := subtle.ConstantTimeCompare([]byte(username), []byte(api.config.Username))
 	validPassword := subtle.ConstantTimeCompare([]byte(password), []byte(api.config.Password))
 
-	return validUsername + validPassword == 2
+	return validUsername+validPassword == 2
 }
 
 func (api *API) CreateSession(r *http.Request) (*Session, error) {
