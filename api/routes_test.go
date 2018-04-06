@@ -41,10 +41,10 @@ func testRoute(t *testing.T, cfg config.Config, url, method string) *httptest.Re
 
 func TestGetFileAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 
@@ -62,10 +62,10 @@ func TestGetFileAPI(t *testing.T) {
 
 func TestFileExistsAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 
@@ -79,17 +79,14 @@ func TestFileExistsAPI(t *testing.T) {
 	url = fmt.Sprintf("/repos/%s/file/%s", "repo", routesTestInvalidId)
 	assert.Equal(t, http.StatusNotFound, testRoute(t, cfg, url, "HEAD").Code)
 
-	// Testing file id with bad formatroute.
-	url = fmt.Sprintf("/repos/%s/file/%s", "repo", "bad-id")
-	assert.Equal(t, http.StatusBadRequest, testRoute(t, cfg, url, "HEAD").Code)
 }
 
 func testGetFileByCommitAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 
@@ -110,10 +107,10 @@ func testGetFileByCommitAPI(t *testing.T) {
 
 func TestFileExistsByCommitAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 
@@ -130,10 +127,10 @@ func TestFileExistsByCommitAPI(t *testing.T) {
 
 func TestGetBranchesAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 
@@ -143,15 +140,13 @@ func TestGetBranchesAPI(t *testing.T) {
 
 func TestGetCommitsAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	branch := helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	branchName := branch.Name().Short()
 
 	cfg := helpers.CreateTestConfig(t, repo)
-
-	branchName, err := branch.Name()
-	assert.Nil(t, err)
 
 	url := fmt.Sprintf("/repos/%s/branches/%s/commits", "repo", branchName)
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
@@ -159,10 +154,10 @@ func TestGetCommitsAPI(t *testing.T) {
 
 func TestGetCommitAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 
@@ -176,17 +171,14 @@ func TestGetCommitAPI(t *testing.T) {
 	url = fmt.Sprintf("/repos/%s/commits/%s", "repo", routesTestInvalidId)
 	assert.Equal(t, http.StatusNotFound, testRoute(t, cfg, url, "GET").Code)
 
-	// Testing invalid commit id with bad format
-	url = fmt.Sprintf("/repos/%s/commits/%s", "repo", "bad-commit-format")
-	assert.Equal(t, http.StatusBadRequest, testRoute(t, cfg, url, "GET").Code)
 }
 
 func TestGetSessionAPI(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	helpers.CreateTestBranch(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 

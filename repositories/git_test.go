@@ -10,27 +10,11 @@ import (
 	"github.com/reviewboard/rb-gateway/helpers"
 )
 
-func TestGetName(t *testing.T) {
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
-
-	name := repo.GetName()
-	assert.Equal(t, name, "repo")
-}
-
-func TestGetPath(t *testing.T) {
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
-
-	path := repo.GetPath()
-	assert.Equal(t, fmt.Sprintf("%s/", path), rawRepo.Workdir())
-}
-
 func TestGetFile(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	fileContent, err := repo.GetFile(fileId)
@@ -42,9 +26,9 @@ func TestGetFile(t *testing.T) {
 
 func TestGetFileByCommit(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, rawRepo).String()
+	commitId := helpers.SeedTestRepo(t, repo, rawRepo).String()
 
 	fileContent, err := repo.GetFileByCommit(commitId, "README")
 	assert.Nil(t, err)
@@ -55,9 +39,9 @@ func TestGetFileByCommit(t *testing.T) {
 
 func TestFileExists(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
+	helpers.SeedTestRepo(t, repo, rawRepo)
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	exists, err := repo.FileExists(fileId)
@@ -67,9 +51,9 @@ func TestFileExists(t *testing.T) {
 
 func TestFileExistsByCommit(t *testing.T) {
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, rawRepo).String()
+	commitId := helpers.SeedTestRepo(t, repo, rawRepo).String()
 
 	exists, err := repo.FileExistsByCommit(commitId, "README")
 	assert.Nil(t, err)
@@ -83,12 +67,11 @@ func TestGetBranches(t *testing.T) {
 	}
 
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, rawRepo)
-	branch := helpers.CreateTestBranch(t, rawRepo)
-	branchName, err := branch.Name()
-	assert.Nil(t, err)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	branchName := branch.Name().Short()
 
 	result, err := repo.GetBranches()
 	assert.Nil(t, err)
@@ -103,7 +86,7 @@ func TestGetBranches(t *testing.T) {
 		assert.Contains(t, []string{"master", branchName}, branches[i].Name)
 
 		if branches[i].Name == branchName {
-			assert.Equal(t, branches[i].Id, branch.Target().String())
+			assert.Equal(t, branches[i].Id, branch.Hash().String())
 		}
 	}
 }
@@ -118,17 +101,17 @@ func TestGetCommits(t *testing.T) {
 	}
 
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, rawRepo)
-	commit, err := rawRepo.LookupCommit(commitId)
+	commitId := helpers.SeedTestRepo(t, repo, rawRepo)
+	commit, err := rawRepo.CommitObject(commitId)
 	assert.Nil(t, err)
 
-	branch := helpers.CreateTestBranch(t, rawRepo)
-	branchCommit, err := rawRepo.LookupCommit(branch.Target())
+	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	branchCommit, err := rawRepo.CommitObject(branch.Hash())
 	assert.Nil(t, err)
 
-	branchName, err := branch.Name()
+	branchName := branch.Name().Short()
 	assert.Nil(t, err)
 
 	// Testing GetCommits without a starting commit.
@@ -141,10 +124,10 @@ func TestGetCommits(t *testing.T) {
 
 	assert.Equal(t, len(commits), 2)
 
-	assert.Equal(t, commits[0].Message, branchCommit.Message())
-	assert.Equal(t, commits[0].Id, branch.Target().String())
+	assert.Equal(t, commits[0].Message, branchCommit.Message)
+	assert.Equal(t, commits[0].Id, branch.Hash().String())
 	assert.Equal(t, commits[0].ParentId, commitId.String())
-	assert.Equal(t, commits[1].Message, commit.Message())
+	assert.Equal(t, commits[1].Message, commit.Message)
 	assert.Equal(t, commits[1].Id, commitId.String())
 	assert.Equal(t, commits[1].ParentId, "")
 
@@ -157,7 +140,7 @@ func TestGetCommits(t *testing.T) {
 
 	assert.Equal(t, len(commits), 1)
 
-	assert.Equal(t, commits[0].Message, commit.Message())
+	assert.Equal(t, commits[0].Message, commit.Message)
 	assert.Equal(t, commits[0].Id, commitId.String())
 }
 
@@ -172,13 +155,16 @@ func TestGetCommit(t *testing.T) {
 	}
 
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, rawRepo)
-	commit, err := rawRepo.LookupCommit(commitId)
+	helpers.SeedTestRepo(t, repo, rawRepo)
+
+	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+
+	commit, err := rawRepo.CommitObject(branch.Hash())
 	assert.Nil(t, err)
 
-	response, err := repo.GetCommit(commitId.String())
+	response, err := repo.GetCommit(branch.Hash().String())
 	assert.Nil(t, err)
 
 	fileIds := make(map[string]string)
@@ -191,21 +177,15 @@ func TestGetCommit(t *testing.T) {
 	err = json.Unmarshal(response, &result)
 	assert.Nil(t, err)
 
-	assert.Equal(t, result.Message, commit.Message())
+	assert.Equal(t, result.Message, commit.Message)
 
-	diff := fmt.Sprintf(`diff --git a/COPYING b/COPYING
+	diff := fmt.Sprintf(`diff --git a/AUTHORS b/AUTHORS
 new file mode 100644
 index 0000000000000000000000000000000000000000..%s
 --- /dev/null
-+++ b/COPYING
++++ b/AUTHORS
 @@ -0,0 +1 @@
-+%sdiff --git a/README b/README
-new file mode 100644
-index 0000000000000000000000000000000000000000..%s
---- /dev/null
-+++ b/README
-@@ -0,0 +1 @@
-+%s`, fileIds["COPYING"], string(files["COPYING"]), fileIds["README"], string(files["README"]))
++%s`, fileIds["AUTHORS"], string(files["AUTHORS"]))
 
 	assert.Equal(t, diff, result.Diff)
 }

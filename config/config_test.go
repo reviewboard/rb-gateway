@@ -10,8 +10,8 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
-	defer helpers.CleanupRepository(t, rawRepo)
+	repo, _ := helpers.CreateTestRepo(t, "repo")
+	defer helpers.CleanupRepository(t, repo.Path)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	path := helpers.WriteTestConfig(t, cfg)

@@ -1,6 +1,8 @@
 rb-gateway
 ==========
+
 A service for managing your repositories.
+
 
 Install
 -------
@@ -19,7 +21,8 @@ $ dep ensure
 $ go build
 ```
 
-Then modify config.json to point to your repositories.
+Then copy `sample_config.json` to `config.json` and modify it to point to your
+repositories.
 
 To start the server on localhost:8888:
 
@@ -29,22 +32,12 @@ To start the server on localhost:8888:
 
 [dep]: https://github.com/golang/dep
 
-Dependencies
-------------
-
-This project depends on:
-
- - [git2go][git2go]
- - [Gorilla web toolkit's mux package][mux]
-
-
-[git2go]: https://github.com/libgit2/git2go
-[mux]: https://www.gorillatoolkit.org/pkg/mux
 
 Testing
 -------
 
 Run `go test ./...` to run tests for rb-gateway and all sub-packages.
+
 
 License
 -------

@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
-	git "github.com/libgit2/git2go"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/reviewboard/rb-gateway/repositories"
 )
@@ -26,7 +28,7 @@ var (
 	}
 )
 
-// Get the files contained in the repository's initial commit.
+// Get the files contained in the repository.
 //
 // This returns a copy of the original data structure, so it may be mutated by callers.
 func GetRepoFiles() (files map[string][]byte) {
@@ -35,16 +37,6 @@ func GetRepoFiles() (files map[string][]byte) {
 	for key, content := range repoFiles {
 		files[key] = content
 	}
-
-	return
-}
-
-// The the files contained only on the repository's alternate branch.
-//
-// This returns a copy of the original data structure, so it may be mutated by callers.
-func GetBranchFiles() (files map[string][]byte) {
-	files = make(map[string][]byte)
-
 	for key, content := range branchFiles {
 		files[key] = content
 	}
@@ -55,16 +47,10 @@ func GetBranchFiles() (files map[string][]byte) {
 // Clean up a testing repository.
 //
 // This deletes the temporary files from disk.
-func CleanupRepository(t *testing.T, rawRepo *git.Repository) {
+func CleanupRepository(t *testing.T, path string) {
 	t.Helper()
 
-	var err error
-	if rawRepo.IsBare() {
-		err = os.RemoveAll(rawRepo.Path())
-	} else {
-		err = os.RemoveAll(rawRepo.Workdir())
-	}
-
+	err := os.RemoveAll(path)
 	assert.Nil(t, err, "Could not cleanup repository.")
 }
 
@@ -77,7 +63,7 @@ func CleanupRepository(t *testing.T, rawRepo *git.Repository) {
 // ```go
 // func Test(t *testing.T) {
 //     repo, rawRepo := testing.CreateTestRepo(t)
-//     defer testing.CleanupRepository(t, rawRepo)
+//     defer testing.CleanupRepository(t, repo.Path)
 //
 //     // ...
 // }
@@ -90,7 +76,7 @@ func CreateTestRepo(t *testing.T, name string) (*repositories.GitRepository, *gi
 	path, err = filepath.EvalSymlinks(path)
 	assert.Nil(t, err, "Could not get absolute path.")
 
-	rawRepo, err := git.InitRepository(path, false)
+	rawRepo, err := git.PlainInit(path, false)
 	assert.Nil(t, err, "Could not initialize repository.")
 
 	repo := &repositories.GitRepository{
@@ -106,26 +92,21 @@ func CreateTestRepo(t *testing.T, name string) (*repositories.GitRepository, *gi
 // Add files to a repository and commit them, returning the commit ID.
 //
 // Callers can compare committed file contents with the result of `testing.GetRepoFiles`.
-func SeedTestRepo(t *testing.T, rawRepo *git.Repository) *git.Oid {
+func SeedTestRepo(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) plumbing.Hash {
 	t.Helper()
 
-	loc, err := time.LoadLocation("UTC")
+	worktree, err := rawRepo.Worktree()
 	assert.Nil(t, err)
 
-	sig := git.Signature{
-		Name:  "Author",
-		Email: "author@example.com",
-		When:  time.Date(2015, 03, 12, 2, 15, 0, 0, loc),
-	}
+	createAndAddFiles(t, repo.Path, worktree, repoFiles)
 
-	index := createAndAddFiles(t, rawRepo, repoFiles)
-	treeId, err := index.WriteTree()
-	assert.Nil(t, err)
-
-	tree, err := rawRepo.LookupTree(treeId)
-	assert.Nil(t, err)
-
-	commitId, err := rawRepo.CreateCommit("HEAD", &sig, &sig, "Initial commit", tree)
+	commitId, err := worktree.Commit("Initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Author",
+			Email: "author@example.com",
+			When:  time.Now(),
+		},
+	})
 	assert.Nil(t, err)
 
 	return commitId
@@ -133,84 +114,72 @@ func SeedTestRepo(t *testing.T, rawRepo *git.Repository) *git.Oid {
 
 // Create a new branch with some test files, returning the commit ID.
 //
-// Callers can compare committed file contents with the result of `testing.GetBranchFiles`.
-func CreateTestBranch(t *testing.T, rawRepo *git.Repository) *git.Branch {
+// Callers can compare committed file contents with the result of `testing.GetRepoFiles`.
+func CreateTestBranch(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) *plumbing.Reference {
 	t.Helper()
 
-	loc, err := time.LoadLocation("UTC")
+	worktree, err := rawRepo.Worktree()
 	assert.Nil(t, err)
 
-	sig := git.Signature{
-		Name:  "Author",
-		Email: "author@example.com",
-		When:  time.Date(2015, 03, 12, 2, 15, 0, 0, loc),
-	}
-
-	// Create a new branch based off HEAD.
-	head, err := rawRepo.Head()
-	assert.Nil(t, err)
-	headCommit, err := rawRepo.LookupCommit(head.Target())
-	assert.Nil(t, err)
-	branch, err := rawRepo.CreateBranch("test-branch", headCommit, false)
+	err = worktree.Checkout(&git.CheckoutOptions{
+		Branch: "refs/heads/test-branch",
+		Create: true,
+	})
 	assert.Nil(t, err)
 
-	index := createAndAddFiles(t, rawRepo, branchFiles)
-	treeId, err := index.WriteTree()
+	createAndAddFiles(t, repo.Path, worktree, branchFiles)
+
+	_, err = worktree.Commit("Add branch", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Author",
+			Email: "author@example.com",
+			When:  time.Now(),
+		},
+	})
 	assert.Nil(t, err)
 
-	tree, err := rawRepo.LookupTree(treeId)
-	assert.Nil(t, err)
-
-	_, err = rawRepo.CreateCommit("refs/heads/test-branch", &sig, &sig, "Add branch", tree, headCommit)
-	assert.Nil(t, err)
-
-	branch, err = rawRepo.LookupBranch("test-branch", git.BranchLocal)
+	branch, err := rawRepo.Reference("refs/heads/test-branch", false)
 	assert.Nil(t, err)
 
 	return branch
 }
 
 // Return the object ID of the given file.
-func GetRepositoryFileId(t *testing.T, rawRepo *git.Repository, path string) *git.Oid {
+func GetRepositoryFileId(t *testing.T, rawRepo *git.Repository, path string) plumbing.Hash {
 	head, err := rawRepo.Head()
 	assert.Nil(t, err)
 
-	headCommit, err := rawRepo.LookupCommit(head.Target())
+	headCommit, err := rawRepo.CommitObject(head.Hash())
 	assert.Nil(t, err)
 
 	tree, err := headCommit.Tree()
 	assert.Nil(t, err)
 
-	entry := tree.EntryByName(path)
-	assert.NotNil(t, entry)
+	entry, err := tree.FindEntry(path)
+	assert.Nil(t, err)
 
-	return entry.Id
+	return entry.Hash
 }
 
 // Get the object ID of the repository head.
-func GetRepoHead(t *testing.T, rawRepo *git.Repository) *git.Oid {
+func GetRepoHead(t *testing.T, rawRepo *git.Repository) plumbing.Hash {
 	head, err := rawRepo.Head()
 	assert.Nil(t, err)
 
-	return head.Target()
+	return head.Hash()
 }
 
 // Create some files and add them to to an index.
-func createAndAddFiles(t *testing.T, rawRepo *git.Repository, files map[string][]byte) *git.Index {
+func createAndAddFiles(t *testing.T, path string, worktree *git.Worktree, files map[string][]byte) {
 	t.Helper()
 
-	index, err := rawRepo.Index()
-	assert.Nil(t, err)
+	for filename, content := range files {
+		path := filepath.Join(path, filename)
 
-	for filename, content := range repoFiles {
-		path := filepath.Join(rawRepo.Workdir(), filename)
-
-		err = ioutil.WriteFile(path, content, 0644)
+		err := ioutil.WriteFile(path, content, 0644)
 		assert.Nil(t, err)
 
-		err = index.AddByPath(filename)
+		_, err = worktree.Add(filename)
 		assert.Nil(t, err)
 	}
-
-	return index
 }

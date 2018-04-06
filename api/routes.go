@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 
@@ -61,15 +60,11 @@ func (api API) getCommits(w http.ResponseWriter, r *http.Request) {
 	var response []byte
 	var err error
 
-	fmt.Printf("BRANCH = %v", branch)
-
 	if len(branch) == 0 {
 		http.Error(w, "Branch not specified.", http.StatusBadRequest)
-		fmt.Printf("??")
 	} else if response, err = repo.GetCommits(branch, start); err != nil {
 		http.Error(w, fmt.Sprintf("Could not get branches: %s", err.Error()),
 			http.StatusBadRequest)
-		fmt.Printf("ERR %v", err)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
@@ -90,19 +85,9 @@ func (api API) getCommit(w http.ResponseWriter, r *http.Request) {
 	if len(commitId) == 0 {
 		http.Error(w, "Commit ID not specified.", http.StatusBadRequest)
 	} else if response, err = repo.GetCommit(commitId); err != nil {
-		// TODO: This is all *very* Git-centric.
-		//
-		// We need our own error type that we can translate into a call to
-		// http.Error.
-		errStr := err.Error()
-
-		if strings.HasPrefix(errStr, "Object not found") {
-			http.Error(w, errStr, http.StatusNotFound)
-		} else if strings.HasPrefix(errStr, "encoding/hex") {
-			http.Error(w, errStr, http.StatusBadRequest)
-		} else {
-			http.Error(w, errStr, http.StatusInternalServerError)
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else if response == nil {
+		http.Error(w, "Commit ID not found.", http.StatusNotFound)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
