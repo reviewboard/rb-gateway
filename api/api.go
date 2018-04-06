@@ -30,8 +30,6 @@ func New(cfg config.Config) API {
 		router: mux.NewRouter(),
 	}
 
-	api.router.Use(loggingMiddleware)
-
 	api.router.Path("/session").
 		Methods("GET").
 		HandlerFunc(api.getSession)
@@ -115,7 +113,7 @@ func (api API) withAuthorizationRequired(next http.Handler) http.Handler {
 
 // Serve the HTTP request.
 func (api API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	api.router.ServeHTTP(w, r)
+	loggingMiddleware(api.router).ServeHTTP(w, r)
 }
 
 func (api *API) validateCredentials(username, password string) bool {
