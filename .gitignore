@@ -1,3 +1,4 @@
-vendor/
+*.swp
 config.json
 rb-gateway
+vendor/

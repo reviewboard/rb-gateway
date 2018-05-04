@@ -46,7 +46,7 @@ func TestGetFileAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
@@ -67,7 +67,7 @@ func TestFileExistsAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
@@ -88,7 +88,7 @@ func testGetFileByCommitAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
@@ -112,7 +112,7 @@ func TestFileExistsByCommitAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
@@ -132,7 +132,7 @@ func TestGetBranchesAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	url := fmt.Sprintf("/repos/%s/branches", "repo")
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
@@ -146,7 +146,7 @@ func TestGetCommitsAPI(t *testing.T) {
 	branch := helpers.CreateTestBranch(t, repo, rawRepo)
 	branchName := branch.Name().Short()
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	url := fmt.Sprintf("/repos/%s/branches/%s/commits", "repo", branchName)
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
@@ -159,7 +159,7 @@ func TestGetCommitAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
@@ -180,7 +180,7 @@ func TestGetSessionAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(t, repo)
+	cfg := helpers.CreateTestConfig(repo)
 
 	request, err := http.NewRequest("GET", "/session", nil)
 	assert.Nil(t, err)
