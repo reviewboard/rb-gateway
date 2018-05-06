@@ -20,6 +20,9 @@ type Config struct {
 	Port           uint16           `json:"port"`
 	Username       string           `json:"username"`
 	Password       string           `json:"password"`
+	UseTLS         bool             `json:"useTLS"`
+	SSLCertificate string           `json:"sslCertificate"`
+	SSLKey         string           `json:"sslKey"`
 	RepositoryData []repositoryData `json:"repositories"`
 	Repositories   map[string]repositories.Repository
 }

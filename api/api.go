@@ -84,7 +84,14 @@ func (api *API) Serve() *http.Server {
 		api.configLock.RLock()
 		defer api.configLock.RUnlock()
 
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if api.config.UseTLS {
+			err = server.ListenAndServeTLS(api.config.SSLCertificate, api.config.SSLKey)
+		} else {
+			err = server.ListenAndServe()
+		}
+
+		if err != http.ErrServerClosed {
 			log.Fatal("ListenAndServe:", err)
 		}
 	}()
