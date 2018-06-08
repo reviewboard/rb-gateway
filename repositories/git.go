@@ -279,7 +279,7 @@ func (repo *GitRepository) GetCommits(branch string, start string) ([]byte, erro
 		gitCommit := GitCommit{
 			commit.Author.Name,
 			commit.Hash.String(),
-			commit.Author.When.String(),
+			commit.Author.When.Format("2006-01-02T15:04:05-0700"),
 			commit.Message,
 			parent,
 		}
@@ -360,7 +360,7 @@ func (repo *GitRepository) GetCommit(commitId string) ([]byte, error) {
 	gitCommit := GitCommit{
 		commit.Author.Name,
 		commit.Hash.String(),
-		commit.Author.When.String(),
+		commit.Author.When.Format("2006-01-02T15:04:05-0700"),
 		commit.Message,
 		commit.ParentHashes[0].String(),
 		patch.String(),
