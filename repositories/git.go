@@ -257,7 +257,7 @@ func (repo *GitRepository) GetCommits(branch string, start string) ([]byte, erro
 	}
 
 	iter, err := gitRepo.Log(&git.LogOptions{
-		From: startCommit,
+		From:  startCommit,
 		Order: git.LogOrderCommitterTime,
 	})
 	if err != nil {
