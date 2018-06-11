@@ -1,12 +1,10 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/reviewboard/rb-gateway/api"
 	"github.com/reviewboard/rb-gateway/config"
@@ -24,7 +22,14 @@ func main() {
 		log.Fatal("Could not watch configuration file: ", err)
 	}
 
-	api := api.New(*cfg)
+	if cfg.TokenStorePath == ":memory:" {
+		log.Fatal("Cannot use memory store outside of tests.")
+	}
+
+	api, err := api.New(*cfg)
+	if err != nil {
+		log.Fatalf("Could not create API: %s", err.Error())
+	}
 
 	hup := make(chan os.Signal, 1)
 	signal.Notify(hup, syscall.SIGHUP)
@@ -62,13 +67,11 @@ func main() {
 			log.Println("CONTROL-C again to force quit.")
 		}
 
-		/*
-		 * This allows us to give the server a grace period for finishing
-		 * in-progress requests before it closes all connections.
-		 */
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		server.Shutdown(ctx)
-		cancel()
+		err = api.Shutdown(server)
+		if err != nil {
+			log.Fatalf("An error occurred while shutting down the server: %s", err.Error())
+		}
+
 		log.Println("Server shut down.")
 
 		if shouldExit {
@@ -76,8 +79,14 @@ func main() {
 		}
 
 		if newCfg != nil {
-			api.SetConfig(*newCfg)
-			log.Println("Configuration reloaded.")
+			if newCfg.TokenStorePath == ":memory:" {
+				log.Println("Failed to reload configuration: cannot use memory store outside of tests.")
+				log.Println("Configuration was not reloaded.")
+			} else if err = api.SetConfig(*newCfg); err != nil {
+				log.Printf("Failed to reload configuration: %s\n", err.Error())
+			} else {
+				log.Println("Configuration reloaded.")
+			}
 		}
 	}
 }

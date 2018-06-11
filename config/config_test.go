@@ -16,6 +16,10 @@ import (
 func TestLoadConfig(t *testing.T) {
 	file, err := ioutil.TempFile("", "rb-gateway-config-")
 	assert.Nil(t, err)
+	defer file.Close()
+
+	path := file.Name()
+	defer os.Remove(path)
 
 	var port uint16 = 8888
 	var username string = "username"
@@ -35,16 +39,12 @@ func TestLoadConfig(t *testing.T) {
 					"path": "%s",
 					"scm": "%s"
 				}
-			]
+			],
+			"tokenStorePath": ":memory:"
 		}
 		`,
 		port, username, password,
 		repo.GetName(), repo.GetPath(), repo.GetScm()))
-
-	path := file.Name()
-	file.Close()
-
-	defer os.Remove(path)
 
 	loaded, err := config.Load(path)
 	assert.Nil(t, err)
@@ -106,7 +106,8 @@ func TestLoadConfigPortMissing(t *testing.T) {
 					"path": "%s",
 					"scm": "%s"
 				}
-			]
+			],
+			"tokenStorePath": ":memory:"
 		}
 		`,
 		username, password,
@@ -195,6 +196,7 @@ func TestLoadConfigTls(t *testing.T) {
 			"useTLS": true,
 			"sslCertificate": "%s",
 			"sslKey": "%s",
+			"tokenStorePath": ":memory:",
 			"repositories": [
 				{
 					"name": "%s",

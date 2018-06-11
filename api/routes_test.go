@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/reviewboard/rb-gateway/api"
+	"github.com/reviewboard/rb-gateway/api/tokens"
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/helpers"
 )
@@ -21,7 +22,8 @@ const (
 func testRoute(t *testing.T, cfg config.Config, url, method string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	handler := api.New(cfg)
+	handler, err := api.New(cfg)
+	assert.Nil(t, err)
 
 	response := httptest.NewRecorder()
 
@@ -188,13 +190,16 @@ func TestGetSessionAPI(t *testing.T) {
 	request.SetBasicAuth(cfg.Username, cfg.Password)
 
 	response := httptest.NewRecorder()
-	api.New(cfg).ServeHTTP(response, request)
+	handler, err := api.New(cfg)
+	assert.Nil(t, err)
+
+	handler.ServeHTTP(response, request)
 
 	var session api.Session
 
 	assert.Nil(t, json.Unmarshal(response.Body.Bytes(), &session))
 
-	if session.PrivateToken == "" {
+	if len(session.PrivateToken) != tokens.TokenSize {
 		t.Error("Private token is not provided in the response")
 	}
 }

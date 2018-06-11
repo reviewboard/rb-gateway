@@ -3,16 +3,16 @@ package api
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 
+	"github.com/reviewboard/rb-gateway/api/tokens"
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/repositories"
 )
@@ -25,13 +25,20 @@ type API struct {
 	configLock sync.RWMutex
 	config     config.Config
 	router     *mux.Router
+	tokenStore tokens.TokenStore
 }
 
 // Return a new router for the API.
-func New(cfg config.Config) *API {
+func New(cfg config.Config) (*API, error) {
+	store, err := tokens.NewStore(cfg.TokenStorePath)
+	if err != nil {
+		return nil, err
+	}
+
 	api := API{
-		config: cfg,
-		router: mux.NewRouter(),
+		config:     cfg,
+		router:     mux.NewRouter(),
+		tokenStore: store,
 	}
 
 	api.router.Path("/session").
@@ -64,14 +71,43 @@ func New(cfg config.Config) *API {
 			Handler(route.handler)
 	}
 
-	return &api
+	return &api, nil
 }
 
-func (api *API) SetConfig(newConfig config.Config) {
+func (api *API) SetConfig(newConfig config.Config) error {
 	api.configLock.Lock()
 	defer api.configLock.Unlock()
 
+	if api.config.TokenStorePath != newConfig.TokenStorePath {
+		store, err := tokens.NewStore(newConfig.TokenStorePath)
+		if err != nil {
+			return err
+		}
+
+		api.tokenStore = store
+	}
+
 	api.config = newConfig
+	return nil
+}
+
+func (api *API) Shutdown(server *http.Server) error {
+	/*
+	 * This allows us to give the server a grace period for finishing
+	 * in-progress requests before it closes all connections.
+	 */
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	server.Shutdown(ctx)
+	cancel()
+
+	/*
+	 * We have to acquire the lock here because the goroutine returned by
+	 * api.Serve() acquires the read portion of the lock.
+	 */
+	api.configLock.Lock()
+	defer api.configLock.Unlock()
+
+	return api.tokenStore.Save()
 }
 
 func (api *API) Serve() *http.Server {
@@ -124,19 +160,7 @@ func (api API) withRepository(next http.Handler) http.Handler {
 // TODO: Replace this with actual token logic.
 func (api API) withAuthorizationRequired(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		privateToken := r.Header.Get(PrivateTokenHeader)
-
-		var payload []byte
-		var err error
-		var pair []string
-
-		if len(privateToken) == 0 {
-			http.Error(w, "Bad private token.", http.StatusBadRequest)
-		} else if payload, err = base64.StdEncoding.DecodeString(privateToken); err != nil {
-			http.Error(w, "Bad private token.", http.StatusBadRequest)
-		} else if pair = strings.SplitN(string(payload), ":", 2); len(pair) != 2 {
-			http.Error(w, "Bad private token.", http.StatusBadRequest)
-		} else if !api.validateCredentials(pair[0], pair[1]) {
+		if api.tokenStore.Get(r) == nil {
 			http.Error(w, "Authorization failed.", http.StatusUnauthorized)
 		} else {
 			next.ServeHTTP(w, r)
@@ -172,8 +196,9 @@ func (api *API) CreateSession(r *http.Request) (*Session, error) {
 		return nil, errors.New("Authorization failed.")
 	}
 
-	// TODO: replace with an actual token.
-	credentials := []byte(fmt.Sprintf("%s:%s", username, password))
-	token := base64.StdEncoding.EncodeToString(credentials)
-	return &Session{token}, nil
+	token, err := api.tokenStore.New()
+	if err != nil {
+		return nil, err
+	}
+	return &Session{PrivateToken: *token}, nil
 }

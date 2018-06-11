@@ -7,10 +7,11 @@ import (
 
 func CreateTestConfig(repos ...repositories.Repository) config.Config {
 	cfg := config.Config{
-		Port:         8888,
-		Username:     "username",
-		Password:     "password",
-		Repositories: make(map[string]repositories.Repository),
+		Port:           8888,
+		Username:       "username",
+		Password:       "password",
+		Repositories:   make(map[string]repositories.Repository),
+		TokenStorePath: ":memory:",
 	}
 
 	for _, repo := range repos {

@@ -2,6 +2,7 @@
     "port": 8888,
     "username": "username",
     "password": "password",
+    "tokenStorePath": "tokens.dat",
     "repositories": [
         {"name": "repo1", "path": "/path/to/repo1.git", "scm": "git"},
         {"name": "repo2", "path": "/path/to/repo2.hg", "scm": "hg"}
