@@ -14,8 +14,10 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
+	assert := assert.New(t)
+
 	file, err := ioutil.TempFile("", "rb-gateway-config-")
-	assert.Nil(t, err)
+	assert.Nil(err)
 	defer file.Close()
 
 	path := file.Name()
@@ -47,19 +49,19 @@ func TestLoadConfig(t *testing.T) {
 		repo.GetName(), repo.GetPath(), repo.GetScm()))
 
 	loaded, err := config.Load(path)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Equal(t, loaded.Port, port)
-	assert.Equal(t, loaded.Username, username)
-	assert.Equal(t, loaded.Password, password)
+	assert.Equal(loaded.Port, port)
+	assert.Equal(loaded.Username, username)
+	assert.Equal(loaded.Password, password)
 
-	assert.Equal(t, len(loaded.Repositories), 1)
-	assert.Contains(t, loaded.Repositories, repo.Name)
+	assert.Equal(len(loaded.Repositories), 1)
+	assert.Contains(loaded.Repositories, repo.Name)
 
 	loadedRepo := loaded.Repositories[repo.Name]
-	assert.Equal(t, loadedRepo.GetName(), repo.Name)
-	assert.Equal(t, loadedRepo.GetPath(), repo.Path)
-	assert.Equal(t, loadedRepo.GetScm(), repo.GetScm())
+	assert.Equal(loadedRepo.GetName(), repo.Name)
+	assert.Equal(loadedRepo.GetPath(), repo.Path)
+	assert.Equal(loadedRepo.GetScm(), repo.GetScm())
 }
 
 func TestLoadConfigAllFieldsMissing(t *testing.T) {

@@ -21,18 +21,19 @@ const (
 
 func testRoute(t *testing.T, cfg config.Config, url, method string) *httptest.ResponseRecorder {
 	t.Helper()
+	assert := assert.New(t)
 
 	handler, err := api.New(cfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	response := httptest.NewRecorder()
 
 	request, err := http.NewRequest(method, url, nil)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	request.SetBasicAuth(cfg.Username, cfg.Password)
 	session, err := handler.CreateSession(request)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	request.Header.Set(api.PrivateTokenHeader, session.PrivateToken)
 
@@ -42,89 +43,97 @@ func testRoute(t *testing.T, cfg config.Config, url, method string) *httptest.Re
 }
 
 func TestGetFileAPI(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	// Testing valid file id
 	url := fmt.Sprintf("/repos/%s/file/%s", repo.Name, fileId)
-	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
+	assert.Equal(http.StatusOK, testRoute(t, cfg, url, "GET").Code)
 
 	// Testing invalid file id
 	url = fmt.Sprintf("/repos/%s/file/%s", repo.Name, routesTestInvalidId)
-	assert.Equal(t, http.StatusNotFound, testRoute(t, cfg, url, "GET").Code)
+	assert.Equal(http.StatusNotFound, testRoute(t, cfg, url, "GET").Code)
 
 }
 
 func TestFileExistsAPI(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	// Testing valid file
 	url := fmt.Sprintf("/repos/%s/file/%s", "repo", fileId)
-	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "HEAD").Code)
+	assert.Equal(http.StatusOK, testRoute(t, cfg, url, "HEAD").Code)
 
 	// Testing invalid file id
 	url = fmt.Sprintf("/repos/%s/file/%s", "repo", routesTestInvalidId)
-	assert.Equal(t, http.StatusNotFound, testRoute(t, cfg, url, "HEAD").Code)
+	assert.Equal(http.StatusNotFound, testRoute(t, cfg, url, "HEAD").Code)
 
 }
 
 func testGetFileByCommitAPI(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
 	// Testing valid commit and file path
 	url := fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "README")
-	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
+	assert.Equal(http.StatusOK, testRoute(t, cfg, url, "GET").Code)
 
 	// Testing invalid file path
 	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "bad-file-path")
-	assert.Equal(t, http.StatusBadRequest, testRoute(t, cfg, url, "GET").Code)
+	assert.Equal(http.StatusBadRequest, testRoute(t, cfg, url, "GET").Code)
 
 	// Testing invalid commit
 	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", "bad-commit", "README")
-	assert.Equal(t, http.StatusBadRequest, testRoute(t, cfg, url, "GET"))
+	assert.Equal(http.StatusBadRequest, testRoute(t, cfg, url, "GET"))
 }
 
 func TestFileExistsByCommitAPI(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
 	// Testing valid commit and file path
 	url := fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "README")
-	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "HEAD").Code)
+	assert.Equal(http.StatusOK, testRoute(t, cfg, url, "HEAD").Code)
 
 	// Testing invalid file path
 	url = fmt.Sprintf("/repos/%s/commits/%s/path/%s", "repo", head, "bad-file-path")
-	assert.Equal(t, http.StatusBadRequest, testRoute(t, cfg, url, "HEAD").Code)
+	assert.Equal(http.StatusBadRequest, testRoute(t, cfg, url, "HEAD").Code)
 }
 
 func TestGetBranchesAPI(t *testing.T) {
@@ -134,7 +143,7 @@ func TestGetBranchesAPI(t *testing.T) {
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	url := fmt.Sprintf("/repos/%s/branches", "repo")
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
@@ -148,58 +157,59 @@ func TestGetCommitsAPI(t *testing.T) {
 	branch := helpers.CreateTestBranch(t, repo, rawRepo)
 	branchName := branch.Name().Short()
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	url := fmt.Sprintf("/repos/%s/branches/%s/commits", "repo", branchName)
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
 }
 
 func TestGetCommitAPI(t *testing.T) {
+	assert := assert.New(t)
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
 	// Testing valid commit id
 	url := fmt.Sprintf("/repos/%s/commits/%s", "repo", head)
-	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
+	assert.Equal(http.StatusOK, testRoute(t, cfg, url, "GET").Code)
 
 	// Testing invalid commit id
 	url = fmt.Sprintf("/repos/%s/commits/%s", "repo", routesTestInvalidId)
-	assert.Equal(t, http.StatusNotFound, testRoute(t, cfg, url, "GET").Code)
+	assert.Equal(http.StatusNotFound, testRoute(t, cfg, url, "GET").Code)
 
 }
 
 func TestGetSessionAPI(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	helpers.SeedTestRepo(t, repo, rawRepo)
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
-	cfg := helpers.CreateTestConfig(repo)
+	cfg := helpers.CreateTestConfig(t, repo)
 
 	request, err := http.NewRequest("GET", "/session", nil)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	request.SetBasicAuth(cfg.Username, cfg.Password)
 
 	response := httptest.NewRecorder()
 	handler, err := api.New(cfg)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	handler.ServeHTTP(response, request)
 
 	var session api.Session
 
-	assert.Nil(t, json.Unmarshal(response.Body.Bytes(), &session))
+	assert.Nil(json.Unmarshal(response.Body.Bytes(), &session))
 
-	if len(session.PrivateToken) != tokens.TokenSize {
-		t.Error("Private token is not provided in the response")
-	}
+	assert.Equal(len(session.PrivateToken), tokens.TokenSize, "Private token is not provided in the response")
 }

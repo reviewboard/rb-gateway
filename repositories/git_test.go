@@ -11,6 +11,8 @@ import (
 )
 
 func TestGetFile(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
@@ -18,26 +20,30 @@ func TestGetFile(t *testing.T) {
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	fileContent, err := repo.GetFile(fileId)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	expectedContent := helpers.GetRepoFiles()["README"]
-	assert.Equal(t, string(expectedContent), string(fileContent))
+	assert.Equal(string(expectedContent), string(fileContent))
 }
 
 func TestGetFileByCommit(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	commitId := helpers.SeedTestRepo(t, repo, rawRepo).String()
 
 	fileContent, err := repo.GetFileByCommit(commitId, "README")
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	expectedContent := helpers.GetRepoFiles()["README"]
-	assert.Equal(t, string(expectedContent), string(fileContent))
+	assert.Equal(string(expectedContent), string(fileContent))
 }
 
 func TestFileExists(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
@@ -45,22 +51,26 @@ func TestFileExists(t *testing.T) {
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	exists, err := repo.FileExists(fileId)
-	assert.Nil(t, err)
-	assert.True(t, exists)
+	assert.Nil(err)
+	assert.True(exists)
 }
 
 func TestFileExistsByCommit(t *testing.T) {
+	assert := assert.New(t)
+
 	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	commitId := helpers.SeedTestRepo(t, repo, rawRepo).String()
 
 	exists, err := repo.FileExistsByCommit(commitId, "README")
-	assert.Nil(t, err)
-	assert.True(t, exists)
+	assert.Nil(err)
+	assert.True(exists)
 }
 
 func TestGetBranches(t *testing.T) {
+	assert := assert.New(t)
+
 	type Branch struct {
 		Name string `json:"name"`
 		Id   string `json:"id"`
@@ -74,24 +84,26 @@ func TestGetBranches(t *testing.T) {
 	branchName := branch.Name().Short()
 
 	result, err := repo.GetBranches()
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	var branches []Branch
 	err = json.Unmarshal(result, &branches)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Equal(t, len(branches), 2)
+	assert.Equal(len(branches), 2)
 
 	for i := range branches {
-		assert.Contains(t, []string{"master", branchName}, branches[i].Name)
+		assert.Contains([]string{"master", branchName}, branches[i].Name)
 
 		if branches[i].Name == branchName {
-			assert.Equal(t, branches[i].Id, branch.Hash().String())
+			assert.Equal(branches[i].Id, branch.Hash().String())
 		}
 	}
 }
 
 func TestGetCommits(t *testing.T) {
+	assert := assert.New(t)
+
 	type Commit struct {
 		Author   string `json:"author"`
 		Id       string `json:"id"`
@@ -105,46 +117,47 @@ func TestGetCommits(t *testing.T) {
 
 	commitId := helpers.SeedTestRepo(t, repo, rawRepo)
 	commit, err := rawRepo.CommitObject(commitId)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	branch := helpers.CreateTestBranch(t, repo, rawRepo)
 	branchCommit, err := rawRepo.CommitObject(branch.Hash())
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	branchName := branch.Name().Short()
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	// Testing GetCommits without a starting commit.
 	result, err := repo.GetCommits(branchName, "")
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	var commits []Commit
 	err = json.Unmarshal(result, &commits)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Equal(t, len(commits), 2)
+	assert.Equal(len(commits), 2)
 
-	assert.Equal(t, commits[0].Message, branchCommit.Message)
-	assert.Equal(t, commits[0].Id, branch.Hash().String())
-	assert.Equal(t, commits[0].ParentId, commitId.String())
-	assert.Equal(t, commits[1].Message, commit.Message)
-	assert.Equal(t, commits[1].Id, commitId.String())
-	assert.Equal(t, commits[1].ParentId, "")
+	assert.Equal(commits[0].Message, branchCommit.Message)
+	assert.Equal(commits[0].Id, branch.Hash().String())
+	assert.Equal(commits[0].ParentId, commitId.String())
+	assert.Equal(commits[1].Message, commit.Message)
+	assert.Equal(commits[1].Id, commitId.String())
+	assert.Equal(commits[1].ParentId, "")
 
 	// Testing GetCommits with a starting commit.
 	result, err = repo.GetCommits(branchName, commitId.String())
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	err = json.Unmarshal(result, &commits)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Equal(t, len(commits), 1)
+	assert.Equal(len(commits), 1)
 
-	assert.Equal(t, commits[0].Message, commit.Message)
-	assert.Equal(t, commits[0].Id, commitId.String())
+	assert.Equal(commits[0].Message, commit.Message)
+	assert.Equal(commits[0].Id, commitId.String())
 }
 
 func TestGetCommit(t *testing.T) {
+	assert := assert.New(t)
 	type Commit struct {
 		Author   string `json:"author"`
 		Id       string `json:"id"`
@@ -162,10 +175,10 @@ func TestGetCommit(t *testing.T) {
 	branch := helpers.CreateTestBranch(t, repo, rawRepo)
 
 	commit, err := rawRepo.CommitObject(branch.Hash())
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	response, err := repo.GetCommit(branch.Hash().String())
-	assert.Nil(t, err)
+	assert.Nil(err)
 
 	fileIds := make(map[string]string)
 	files := helpers.GetRepoFiles()
@@ -175,9 +188,9 @@ func TestGetCommit(t *testing.T) {
 
 	var result Commit
 	err = json.Unmarshal(response, &result)
-	assert.Nil(t, err)
+	assert.Nil(err)
 
-	assert.Equal(t, result.Message, commit.Message)
+	assert.Equal(result.Message, commit.Message)
 
 	diff := fmt.Sprintf(`diff --git a/AUTHORS b/AUTHORS
 new file mode 100644
@@ -187,5 +200,5 @@ index 0000000000000000000000000000000000000000..%s
 @@ -0,0 +1 @@
 +%s`, fileIds["AUTHORS"], string(files["AUTHORS"]))
 
-	assert.Equal(t, diff, result.Diff)
+	assert.Equal(diff, result.Diff)
 }

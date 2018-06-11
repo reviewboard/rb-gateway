@@ -1,11 +1,15 @@
 package helpers
 
 import (
+	"testing"
+
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/repositories"
 )
 
-func CreateTestConfig(repos ...repositories.Repository) config.Config {
+func CreateTestConfig(t *testing.T, repos ...repositories.Repository) config.Config {
+	t.Helper()
+
 	cfg := config.Config{
 		Port:           8888,
 		Username:       "username",
