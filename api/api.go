@@ -96,13 +96,9 @@ func (api *API) SetConfig(newConfig config.Config) error {
 // used in the latter case to avoid the overhead of unnecessary
 // locking/unlocking.
 func (api *API) setConfigUnsafe(newConfig config.Config) error {
-	if api.config.TokenStorePath != newConfig.TokenStorePath {
-		store, err := tokens.NewStore(newConfig.TokenStorePath)
-		if err != nil {
-			return err
-		}
-
-		api.tokenStore = store
+	tokenStore, err := tokens.NewStore(newConfig.TokenStorePath)
+	if err != nil {
+		return err
 	}
 
 	provider, err := newHtpasswdSecretProvider(newConfig.HtpasswdPath)
@@ -110,6 +106,7 @@ func (api *API) setConfigUnsafe(newConfig config.Config) error {
 		return err
 	}
 
+	api.tokenStore = tokenStore
 	api.authenticator.Secrets = provider
 	api.config = newConfig
 	return nil
