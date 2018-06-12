@@ -1,7 +1,6 @@
 package repositories_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -71,11 +70,6 @@ func TestFileExistsByCommit(t *testing.T) {
 func TestGetBranches(t *testing.T) {
 	assert := assert.New(t)
 
-	type Branch struct {
-		Name string `json:"name"`
-		Id   string `json:"id"`
-	}
-
 	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
@@ -83,34 +77,22 @@ func TestGetBranches(t *testing.T) {
 	branch := helpers.CreateGitBranch(t, repo, rawRepo)
 	branchName := branch.Name().Short()
 
-	result, err := repo.GetBranches()
+	branches, err := repo.GetBranches()
 	assert.Nil(err)
 
-	var branches []Branch
-	err = json.Unmarshal(result, &branches)
-	assert.Nil(err)
-
-	assert.Equal(len(branches), 2)
+	assert.Equal(2, len(branches))
 
 	for i := range branches {
 		assert.Contains([]string{"master", branchName}, branches[i].Name)
 
 		if branches[i].Name == branchName {
-			assert.Equal(branches[i].Id, branch.Hash().String())
+			assert.Equal(branch.Hash().String(), branches[i].Id)
 		}
 	}
 }
 
 func TestGetCommits(t *testing.T) {
 	assert := assert.New(t)
-
-	type Commit struct {
-		Author   string `json:"author"`
-		Id       string `json:"id"`
-		Date     string `json:"date"`
-		Message  string `json:"message"`
-		ParentId string `json:"parent_id"`
-	}
 
 	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
@@ -127,45 +109,30 @@ func TestGetCommits(t *testing.T) {
 	assert.Nil(err)
 
 	// Testing GetCommits without a starting commit.
-	result, err := repo.GetCommits(branchName, "")
-	assert.Nil(err)
-
-	var commits []Commit
-	err = json.Unmarshal(result, &commits)
+	commits, err := repo.GetCommits(branchName, "")
 	assert.Nil(err)
 
 	assert.Equal(len(commits), 2)
 
-	assert.Equal(commits[0].Message, branchCommit.Message)
-	assert.Equal(commits[0].Id, branch.Hash().String())
-	assert.Equal(commits[0].ParentId, commitId.String())
-	assert.Equal(commits[1].Message, commit.Message)
-	assert.Equal(commits[1].Id, commitId.String())
-	assert.Equal(commits[1].ParentId, "")
+	assert.Equal(branchCommit.Message, commits[0].Message)
+	assert.Equal(branch.Hash().String(), commits[0].Id)
+	assert.Equal(commitId.String(), commits[0].ParentId)
+	assert.Equal(commit.Message, commits[1].Message)
+	assert.Equal(commitId.String(), commits[1].Id)
+	assert.Equal("", commits[1].ParentId)
 
 	// Testing GetCommits with a starting commit.
-	result, err = repo.GetCommits(branchName, commitId.String())
-	assert.Nil(err)
-
-	err = json.Unmarshal(result, &commits)
+	commits, err = repo.GetCommits(branchName, commitId.String())
 	assert.Nil(err)
 
 	assert.Equal(len(commits), 1)
 
-	assert.Equal(commits[0].Message, commit.Message)
-	assert.Equal(commits[0].Id, commitId.String())
+	assert.Equal(commit.Message, commits[0].Message)
+	assert.Equal(commitId.String(), commits[0].Id)
 }
 
 func TestGetCommit(t *testing.T) {
 	assert := assert.New(t)
-	type Commit struct {
-		Author   string `json:"author"`
-		Id       string `json:"id"`
-		Date     string `json:"date"`
-		Message  string `json:"message"`
-		ParentId string `json:"parent_id"`
-		Diff     string `json:"diff"`
-	}
 
 	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
@@ -174,10 +141,10 @@ func TestGetCommit(t *testing.T) {
 
 	branch := helpers.CreateGitBranch(t, repo, rawRepo)
 
-	commit, err := rawRepo.CommitObject(branch.Hash())
+	expected, err := rawRepo.CommitObject(branch.Hash())
 	assert.Nil(err)
 
-	response, err := repo.GetCommit(branch.Hash().String())
+	result, err := repo.GetCommit(branch.Hash().String())
 	assert.Nil(err)
 
 	fileIds := make(map[string]string)
@@ -186,11 +153,7 @@ func TestGetCommit(t *testing.T) {
 		fileIds[filename] = helpers.GetRepositoryFileId(t, rawRepo, filename).String()
 	}
 
-	var result Commit
-	err = json.Unmarshal(response, &result)
-	assert.Nil(err)
-
-	assert.Equal(result.Message, commit.Message)
+	assert.Equal(expected.Message, result.CommitInfo.Message)
 
 	diff := fmt.Sprintf(`diff --git a/AUTHORS b/AUTHORS
 new file mode 100644

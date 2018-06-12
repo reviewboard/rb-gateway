@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -40,8 +39,10 @@ func (repo *GitRepository) GetScm() string {
 }
 
 // GetFile is a Repository implementation that returns the contents of a file
-// in the GitRepository based on the file revision sha. On success, it returns
-// the file contents in a byte array. On failure, the error will be returned.
+// in the GitRepository based on the file revision sha.
+//
+// On success, it returns the file contents in a byte array. On failure, the
+// error will be returned.
 func (repo *GitRepository) GetFile(id string) ([]byte, error) {
 	gitRepo, err := git.PlainOpen(repo.Path)
 	if err != nil {
@@ -67,9 +68,10 @@ func (repo *GitRepository) GetFile(id string) ([]byte, error) {
 }
 
 // GetFileByCommit is a Repository implementation that returns the contents of
-// a file in the GitRepository based on a commit sha and the file path. On
-// success, it returns the file contents in a byte array. On failure, the error
-// will be returned.
+// a file in the GitRepository based on a commit sha and the file path.
+//
+// On success, it returns the file contents in a byte array. On failure, the
+// error will be returned.
 func (repo *GitRepository) GetFileByCommit(commitId, filepath string) ([]byte, error) {
 	gitRepo, err := git.PlainOpen(repo.Path)
 	if err != nil {
@@ -110,8 +112,10 @@ func (repo *GitRepository) GetFileByCommit(commitId, filepath string) ([]byte, e
 }
 
 // FileExists is a Repository implementation that returns whether a file exists
-// in the GitRepository based on the file revision sha. It returns true if the
-// file exists, false otherwise. On failure, the error will also be returned.
+// in the GitRepository based on the file revision sha.
+//
+// It returns true if the file exists, false otherwise. On failure, the error
+// will also be returned.
 func (repo *GitRepository) FileExists(id string) (bool, error) {
 	gitRepo, err := git.PlainOpen(repo.Path)
 	if err != nil {
@@ -132,6 +136,7 @@ func (repo *GitRepository) FileExists(id string) (bool, error) {
 
 // FileExistsByCommit is a Repository implementation that returns whether a
 // file exists in the GitRepository based on a commit sha and the file path.
+//
 // It returns true if the file exists, false otherwise. On failure, the error
 // will also be returned.
 func (repo *GitRepository) FileExistsByCommit(commitId, filepath string) (bool, error) {
@@ -164,23 +169,11 @@ func (repo *GitRepository) FileExistsByCommit(commitId, filepath string) (bool, 
 }
 
 // GetBranches is a Repository implementation that returns all the branches in
-// the repository. It returns a JSON representation of the branches containing
-// the branch name and sha id. On failure, the error will also be returned.
+// the repository.
 //
-// The JSON returned has the following format:
-// [
-//   {
-//     "name": master,
-//     "id": "1b6f00c0fe975dd12251431ed2ea561e0acc6d44"
-//   }
-// ]
-func (repo *GitRepository) GetBranches() ([]byte, error) {
-	type GitBranch struct {
-		Name string `json:"name"`
-		Id   string `json:"id"`
-	}
-
-	var branches []GitBranch = make([]GitBranch, 0, branchesAllocationSize)
+// On failure, the error will also be returned.
+func (repo *GitRepository) GetBranches() ([]Branch, error) {
+	var branches []Branch = make([]Branch, 0, branchesAllocationSize)
 
 	gitRepo, err := git.PlainOpen(repo.Path)
 	if err != nil {
@@ -196,48 +189,27 @@ func (repo *GitRepository) GetBranches() ([]byte, error) {
 		name := strings.Split(ref.Name().String(), "refs/heads/")[1]
 		id := ref.Hash().String()
 
-		branches = append(branches, GitBranch{name, id})
+		branches = append(branches, Branch{
+			Name: name,
+			Id:   id,
+		})
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	json, err := json.Marshal(branches)
-	if err != nil {
-		return nil, err
-	}
-
-	return json, nil
+	return branches, nil
 }
 
 // GetCommits is a Repository implementation that returns all the commits in
 // the repository for the specified branch. It also takes an optional start
 // commit sha, which will return all commits starting from the start commit
-// sha instead. The returned JSON representation of the commits contains the
-// author's name, the sha id, the date, the commit message, and the parent sha.
-// On failure, the error will also be returned.
+// sha instead.
 //
-// The JSON returned has the following format:
-// [
-//   {
-//     "author": "John Doe",
-//     "id": "1b6f00c0fe975dd12251431ed2ea561e0acc6d44",
-//     "date": "2015-06-27T05:51:39-07:00",
-//     "message": "Add README.md",
-//     "parent_id": "bfdde95432b3af879af969bd2377dc3e55ee46e6"
-//   }
-// ]
-func (repo *GitRepository) GetCommits(branch string, start string) ([]byte, error) {
-	type GitCommit struct {
-		Author   string `json:"author"`
-		Id       string `json:"id"`
-		Date     string `json:"date"`
-		Message  string `json:"message"`
-		ParentId string `json:"parent_id"`
-	}
-
-	var commits []GitCommit = make([]GitCommit, 0, commitsPageSize)
+// On failure, the error will also be returned.
+func (repo *GitRepository) GetCommits(branch string, start string) ([]CommitInfo, error) {
+	var commits []CommitInfo = make([]CommitInfo, 0, commitsPageSize)
 
 	gitRepo, err := git.PlainOpen(repo.Path)
 	if err != nil {
@@ -276,59 +248,27 @@ func (repo *GitRepository) GetCommits(branch string, start string) ([]byte, erro
 			parent = commit.ParentHashes[0].String()
 		}
 
-		gitCommit := GitCommit{
-			commit.Author.Name,
-			commit.Hash.String(),
-			commit.Author.When.Format("2006-01-02T15:04:05-0700"),
-			commit.Message,
-			parent,
+		commitInfo := CommitInfo{
+			Author:   commit.Author.Name,
+			Id:       commit.Hash.String(),
+			Date:     commit.Author.When.Format("2006-01-02T15:04:05-0700"),
+			Message:  commit.Message,
+			ParentId: parent,
 		}
 
-		commits = append(commits, gitCommit)
+		commits = append(commits, commitInfo)
 
 		commit, err = iter.Next()
 	}
 
-	json, err := json.Marshal(commits)
-	if err != nil {
-		return nil, err
-	}
-
-	return json, nil
+	return commits, nil
 }
 
 // GetCommit is a Repository implementation that returns the commit information
-// in the repository for the specified commit id. The returned JSON
-// representation of the commit contains the author's name, the sha id, the
-// date, the commit message, the parent sha, and the diff. On failure, the
-// error will also be returned.
+// in the repository for the specified commit id.
 //
-// The JSON returned has the following format:
-// {
-//   "author": "John Doe",
-//   "id": "1b6f00c0fe975dd12251431ed2ea561e0acc6d44",
-//   "date": "2015-06-27T05:51:39-07:00",
-//   "message": "Add README.md",
-//   "parent_id": "bfdde95432b3af879af969bd2377dc3e55ee46e6",
-//   "diff": "diff --git a/test b/test
-//            index e69de29bb2d1d6434b8b29ae775ad8c2e48c5391..044f599c9a720fe1a7d02e694a8dab492cbda8f0 100644
-//            --- a/test
-//            +++ b/test
-//            @@ -1 +1,3 @@
-//            test
-//            +
-//            +test"
-// }
-func (repo *GitRepository) GetCommit(commitId string) ([]byte, error) {
-	type GitCommit struct {
-		Author   string `json:"author"`
-		Id       string `json:"id"`
-		Date     string `json:"date"`
-		Message  string `json:"message"`
-		ParentId string `json:"parent_id"`
-		Diff     string `json:"diff"`
-	}
-
+// On failure, the error will also be returned.
+func (repo *GitRepository) GetCommit(commitId string) (*Commit, error) {
 	gitRepo, err := git.PlainOpen(repo.Path)
 	if err != nil {
 		return nil, err
@@ -357,19 +297,16 @@ func (repo *GitRepository) GetCommit(commitId string) ([]byte, error) {
 		return nil, err
 	}
 
-	gitCommit := GitCommit{
-		commit.Author.Name,
-		commit.Hash.String(),
-		commit.Author.When.Format("2006-01-02T15:04:05-0700"),
-		commit.Message,
-		commit.ParentHashes[0].String(),
-		patch.String(),
+	change := Commit{
+		CommitInfo: CommitInfo{
+			Author:   commit.Author.Name,
+			Id:       commit.Hash.String(),
+			Date:     commit.Author.When.Format("2006-01-02T15:04:05-0700"),
+			Message:  commit.Message,
+			ParentId: commit.ParentHashes[0].String(),
+		},
+		Diff: patch.String(),
 	}
 
-	json, err := json.Marshal(gitCommit)
-	if err != nil {
-		return nil, err
-	}
-
-	return json, nil
+	return &change, nil
 }

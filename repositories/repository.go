@@ -41,15 +41,51 @@ type Repository interface {
 
 	// GetBranches returns all the branches in the repository as a JSON byte
 	// array. If an error occurs, it will also be returned.
-	GetBranches() ([]byte, error)
+	GetBranches() ([]Branch, error)
 
 	// GetCommit returns all the commits in the repository starting at the
 	// specified branch as a JSON byte array. It also takes an optional start
 	// commit id, which will return all commits starting from the start commit
 	// id instead. If an error occurs, it will also be returned.
-	GetCommits(branch string, start string) ([]byte, error)
+	GetCommits(branch string, start string) ([]CommitInfo, error)
 
 	// GetCommit returns the commit in the repository provided by the commit
 	// id as a JSON byte array. If an error occurs, it will also be returned.
-	GetCommit(commitId string) ([]byte, error)
+	GetCommit(commitId string) (*Commit, error)
+}
+
+// Metadata about a commit.
+type CommitInfo struct {
+	// The author of the commit.
+	Author string `json:"author"`
+
+	// The unique identifier of the commit.
+	Id string `json:"id"`
+
+	// The date the commit was authored.
+	Date string `json:"date"`
+
+	// The commit's message.
+	Message string `json:"message"`
+
+	// The unique identifier of the parent commit.
+	ParentId string `json:"parent_id"`
+}
+
+// A commit with metadata and a diff.
+type Commit struct {
+	// Commit metadata.
+	CommitInfo
+
+	// The contents of the diff.
+	Diff string `json:"diff"`
+}
+
+// Information about a branch in an SCM.
+type Branch struct {
+	// The name of the branch.
+	Name string `json:"name"`
+
+	// The commit ID the branch points to.
+	Id string `json:"id"`
 }

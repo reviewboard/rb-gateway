@@ -17,6 +17,7 @@ import (
 // URL: `/session`
 func (api API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	token, err := api.tokenStore.New()
+
 	if err != nil {
 		log.Printf("Could not create session: %s", err.Error())
 		http.Error(w, "Could not create session", http.StatusInternalServerError)
@@ -43,11 +44,15 @@ func (api API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 func (api API) getBranches(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 
+	var branches []repositories.Branch
 	var response []byte
 	var err error
 
-	if response, err = repo.GetBranches(); err != nil {
+	if branches, err = repo.GetBranches(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	} else if response, err = json.Marshal(branches); err != nil {
+		log.Printf("Could not serialize branches: %s", err.Error())
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
@@ -63,14 +68,18 @@ func (api API) getCommits(w http.ResponseWriter, r *http.Request) {
 	branch := params["branch"]
 	start := r.URL.Query().Get("start")
 
+	var commits []repositories.CommitInfo
 	var response []byte
 	var err error
 
 	if len(branch) == 0 {
 		http.Error(w, "Branch not specified.", http.StatusBadRequest)
-	} else if response, err = repo.GetCommits(branch, start); err != nil {
+	} else if commits, err = repo.GetCommits(branch, start); err != nil {
 		http.Error(w, fmt.Sprintf("Could not get branches: %s", err.Error()),
 			http.StatusBadRequest)
+	} else if response, err = json.Marshal(commits); err != nil {
+		log.Printf("Could not serialize commits: %s", err.Error())
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
@@ -85,15 +94,19 @@ func (api API) getCommit(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	commitId := params["commit-id"]
 
+	var commit *repositories.Commit
 	var response []byte
 	var err error
 
 	if len(commitId) == 0 {
 		http.Error(w, "Commit ID not specified.", http.StatusBadRequest)
-	} else if response, err = repo.GetCommit(commitId); err != nil {
+	} else if commit, err = repo.GetCommit(commitId); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else if response == nil {
+	} else if commit == nil {
 		http.Error(w, "Commit ID not found.", http.StatusNotFound)
+	} else if response, err = json.Marshal(*commit); err != nil {
+		log.Printf("Could not serialize commit \"%s\" in repo \"%s\": %s", commit.Id, repo.GetName(), err.Error())
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
@@ -107,17 +120,17 @@ func (api API) getFile(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
-	var response []byte
+	var contents []byte
 	var err error
 
 	if len(objectId) == 0 {
 		http.Error(w, "File ID not specified.", http.StatusBadRequest)
-	} else if response, err = repo.GetFile(objectId); err != nil {
+	} else if contents, err = repo.GetFile(objectId); err != nil {
 		http.Error(w, fmt.Sprintf("Could not get file \"%s\": %s", objectId, err.Error()),
 			http.StatusNotFound)
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Write(response)
+		w.Write(contents)
 	}
 }
 
@@ -134,7 +147,7 @@ func (api API) getFileExists(w http.ResponseWriter, r *http.Request) {
 	if len(objectId) == 0 {
 		http.Error(w, "File ID not specified.", http.StatusBadRequest)
 	} else if exists, err = repo.FileExists(objectId); err != nil {
-		http.Error(w, fmt.Sprintf("Could not find file \"%s\": %s", objectId, err.Error()),
+		http.Error(w, fmt.Sprintf("Could not find file \"%s\" in repo: %s", objectId, err.Error()),
 			http.StatusBadRequest)
 	} else if !exists {
 		w.WriteHeader(http.StatusNotFound)
@@ -153,22 +166,21 @@ func (api API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 	commitId := params["commit-id"]
 	path := params["path"]
 
-	var response []byte
+	var contents []byte
 	var err error
 
 	if len(commitId) == 0 {
 		http.Error(w, "Commit ID not specified.", http.StatusBadRequest)
 	} else if len(path) == 0 {
 		http.Error(w, "File path not specified.", http.StatusBadRequest)
-	} else if response, err = repo.GetFileByCommit(commitId, path); err != nil {
-
+	} else if contents, err = repo.GetFileByCommit(commitId, path); err != nil {
 		http.Error(w,
 			fmt.Sprintf("Could not get file \"%s\" at commit \"%s\": %s",
 				path, commitId, err.Error()),
 			http.StatusNotFound)
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Write(response)
+		w.Write(contents)
 	}
 }
 
