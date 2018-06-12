@@ -13,10 +13,10 @@ import (
 func TestGetFile(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	fileContent, err := repo.GetFile(fileId)
@@ -29,10 +29,10 @@ func TestGetFile(t *testing.T) {
 func TestGetFileByCommit(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, repo, rawRepo).String()
+	commitId := helpers.SeedGitRepo(t, repo, rawRepo).String()
 
 	fileContent, err := repo.GetFileByCommit(commitId, "README")
 	assert.Nil(err)
@@ -44,10 +44,10 @@ func TestGetFileByCommit(t *testing.T) {
 func TestFileExists(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
 	exists, err := repo.FileExists(fileId)
@@ -58,10 +58,10 @@ func TestFileExists(t *testing.T) {
 func TestFileExistsByCommit(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, repo, rawRepo).String()
+	commitId := helpers.SeedGitRepo(t, repo, rawRepo).String()
 
 	exists, err := repo.FileExistsByCommit(commitId, "README")
 	assert.Nil(err)
@@ -76,11 +76,11 @@ func TestGetBranches(t *testing.T) {
 		Id   string `json:"id"`
 	}
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	branch := helpers.CreateGitBranch(t, repo, rawRepo)
 	branchName := branch.Name().Short()
 
 	result, err := repo.GetBranches()
@@ -112,14 +112,14 @@ func TestGetCommits(t *testing.T) {
 		ParentId string `json:"parent_id"`
 	}
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	commitId := helpers.SeedTestRepo(t, repo, rawRepo)
+	commitId := helpers.SeedGitRepo(t, repo, rawRepo)
 	commit, err := rawRepo.CommitObject(commitId)
 	assert.Nil(err)
 
-	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	branch := helpers.CreateGitBranch(t, repo, rawRepo)
 	branchCommit, err := rawRepo.CommitObject(branch.Hash())
 	assert.Nil(err)
 
@@ -167,12 +167,12 @@ func TestGetCommit(t *testing.T) {
 		Diff     string `json:"diff"`
 	}
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
 
-	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	branch := helpers.CreateGitBranch(t, repo, rawRepo)
 
 	commit, err := rawRepo.CommitObject(branch.Hash())
 	assert.Nil(err)

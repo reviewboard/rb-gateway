@@ -27,7 +27,7 @@ func TestLoadConfig(t *testing.T) {
 	port := uint16(8888)
 	tokenStorePath := ":memory:"
 
-	repo, _ := helpers.CreateTestRepo(t, "repo")
+	repo, _ := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	_, err = file.WriteString(fmt.Sprintf(`
@@ -96,7 +96,7 @@ func TestLoadConfigPortMissing(t *testing.T) {
 	path := file.Name()
 	defer os.Remove(path)
 
-	repo, _ := helpers.CreateTestRepo(t, "repo")
+	repo, _ := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	_, err = file.WriteString(fmt.Sprintf(`
@@ -141,7 +141,7 @@ func TestLoadConfigTlsMissing(t *testing.T) {
 	path := file.Name()
 	defer os.Remove(path)
 
-	repo, _ := helpers.CreateTestRepo(t, "repo")
+	repo, _ := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	_, err = file.WriteString(fmt.Sprintf(`
@@ -169,7 +169,7 @@ func TestLoadConfigTlsMissing(t *testing.T) {
 func TestLoadConfigTls(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, _ := helpers.CreateTestRepo(t, "repo")
+	repo, _ := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	dir, err := ioutil.TempDir("", "rb-gateway-test")

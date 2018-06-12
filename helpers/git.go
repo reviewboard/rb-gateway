@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,45 +14,6 @@ import (
 	"github.com/reviewboard/rb-gateway/repositories"
 )
 
-var (
-	// A set of files to create in the initial commit.
-	repoFiles = map[string][]byte{
-		"README":  []byte("README\n"),
-		"COPYING": []byte("COPYING\n"),
-	}
-
-	// A set of files to create in the branch commit.
-	branchFiles = map[string][]byte{
-		"AUTHORS": []byte("AUTHORS\n"),
-	}
-)
-
-// Get the files contained in the repository.
-//
-// This returns a copy of the original data structure, so it may be mutated by callers.
-func GetRepoFiles() (files map[string][]byte) {
-	files = make(map[string][]byte)
-
-	for key, content := range repoFiles {
-		files[key] = content
-	}
-	for key, content := range branchFiles {
-		files[key] = content
-	}
-
-	return
-}
-
-// Clean up a testing repository.
-//
-// This deletes the temporary files from disk.
-func CleanupRepository(t *testing.T, path string) {
-	t.Helper()
-
-	err := os.RemoveAll(path)
-	assert.Nil(t, err, "Could not cleanup repository")
-}
-
 // Create a Git Repository for testing.
 //
 // The caller is responsible for cleaning up the filesystem afterwards.
@@ -62,13 +22,13 @@ func CleanupRepository(t *testing.T, path string) {
 //
 // ```go
 // func Test(t *testing.T) {
-//     repo, rawRepo := testing.CreateTestRepo(t)
+//     repo, rawRepo := testing.CreateGitRepo(t)
 //     defer testing.CleanupRepository(t, repo.Path)
 //
 //     // ...
 // }
 // ```
-func CreateTestRepo(t *testing.T, name string) (*repositories.GitRepository, *git.Repository) {
+func CreateGitRepo(t *testing.T, name string) (*repositories.GitRepository, *git.Repository) {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -93,14 +53,14 @@ func CreateTestRepo(t *testing.T, name string) (*repositories.GitRepository, *gi
 // Add files to a repository and commit them, returning the commit ID.
 //
 // Callers can compare committed file contents with the result of `testing.GetRepoFiles`.
-func SeedTestRepo(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) plumbing.Hash {
+func SeedGitRepo(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) plumbing.Hash {
 	t.Helper()
 	assert := assert.New(t)
 
 	worktree, err := rawRepo.Worktree()
 	assert.Nil(err)
 
-	createAndAddFiles(t, repo.Path, worktree, repoFiles)
+	createAndAddFilesGit(t, repo.Path, worktree, repoFiles)
 
 	commitId, err := worktree.Commit("Initial commit", &git.CommitOptions{
 		Author: &object.Signature{
@@ -117,7 +77,7 @@ func SeedTestRepo(t *testing.T, repo *repositories.GitRepository, rawRepo *git.R
 // Create a new branch with some test files, returning the commit ID.
 //
 // Callers can compare committed file contents with the result of `testing.GetRepoFiles`.
-func CreateTestBranch(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) *plumbing.Reference {
+func CreateGitBranch(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) *plumbing.Reference {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -130,7 +90,7 @@ func CreateTestBranch(t *testing.T, repo *repositories.GitRepository, rawRepo *g
 	})
 	assert.Nil(err)
 
-	createAndAddFiles(t, repo.Path, worktree, branchFiles)
+	createAndAddFilesGit(t, repo.Path, worktree, branchFiles)
 
 	_, err = worktree.Commit("Add branch", &git.CommitOptions{
 		Author: &object.Signature{
@@ -178,7 +138,7 @@ func GetRepoHead(t *testing.T, rawRepo *git.Repository) plumbing.Hash {
 }
 
 // Create some files and add them to to an index.
-func createAndAddFiles(t *testing.T, path string, worktree *git.Worktree, files map[string][]byte) {
+func createAndAddFilesGit(t *testing.T, path string, worktree *git.Worktree, files map[string][]byte) {
 	t.Helper()
 	assert := assert.New(t)
 

@@ -44,11 +44,11 @@ func testRoute(t *testing.T, cfg config.Config, url, method string) *httptest.Re
 func TestGetFileAPI(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
@@ -68,11 +68,11 @@ func TestGetFileAPI(t *testing.T) {
 func TestFileExistsAPI(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
@@ -92,11 +92,11 @@ func TestFileExistsAPI(t *testing.T) {
 func testGetFileByCommitAPI(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
@@ -119,11 +119,11 @@ func testGetFileByCommitAPI(t *testing.T) {
 func TestFileExistsByCommitAPI(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
@@ -140,11 +140,11 @@ func TestFileExistsByCommitAPI(t *testing.T) {
 }
 
 func TestGetBranchesAPI(t *testing.T) {
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
@@ -154,11 +154,11 @@ func TestGetBranchesAPI(t *testing.T) {
 }
 
 func TestGetCommitsAPI(t *testing.T) {
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	branch := helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	branch := helpers.CreateGitBranch(t, repo, rawRepo)
 	branchName := branch.Name().Short()
 
 	cfg := helpers.CreateTestConfig(t, repo)
@@ -170,11 +170,11 @@ func TestGetCommitsAPI(t *testing.T) {
 
 func TestGetCommitAPI(t *testing.T) {
 	assert := assert.New(t)
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
@@ -194,11 +194,11 @@ func TestGetCommitAPI(t *testing.T) {
 func TestGetSessionAPI(t *testing.T) {
 	assert := assert.New(t)
 
-	repo, rawRepo := helpers.CreateTestRepo(t, "repo")
+	repo, rawRepo := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	helpers.SeedTestRepo(t, repo, rawRepo)
-	helpers.CreateTestBranch(t, repo, rawRepo)
+	helpers.SeedGitRepo(t, repo, rawRepo)
+	helpers.CreateGitBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
 	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
