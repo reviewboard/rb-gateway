@@ -2,14 +2,13 @@ package api
 
 import (
 	"context"
-	"crypto/subtle"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
+	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 
 	"github.com/reviewboard/rb-gateway/api/tokens"
@@ -22,30 +21,30 @@ const (
 )
 
 type API struct {
-	configLock sync.RWMutex
-	config     config.Config
-	router     *mux.Router
-	tokenStore tokens.TokenStore
+	configLock    sync.RWMutex
+	config        config.Config
+	router        *mux.Router
+	tokenStore    tokens.TokenStore
+	authenticator *auth.BasicAuth
 }
 
 // Return a new router for the API.
 func New(cfg config.Config) (*API, error) {
-	store, err := tokens.NewStore(cfg.TokenStorePath)
-	if err != nil {
-		return nil, err
+	api := API{
+		config:        config.Config{},
+		router:        mux.NewRouter(),
+		authenticator: auth.NewBasicAuthenticator("RB Gateway", nil),
 	}
 
-	api := API{
-		config:     cfg,
-		router:     mux.NewRouter(),
-		tokenStore: store,
+	if err := api.setConfigUnsafe(cfg); err != nil {
+		return nil, err
 	}
 
 	api.router.Path("/session").
 		Methods("GET", "POST").
-		HandlerFunc(api.getSession)
+		HandlerFunc(api.authenticator.Wrap(api.getSession))
 
-	// The following routes all require authorization.
+	// The following routes all require token authorization.
 	repoRoutes := api.router.PathPrefix("/repos/{repo}").Subrouter()
 	repoRoutes.Use(api.withAuthorizationRequired)
 	repoRoutes.Use(api.withRepository)
@@ -74,10 +73,29 @@ func New(cfg config.Config) (*API, error) {
 	return &api, nil
 }
 
+// Update the configuration.
+//
+// If there is an error setting the configuration (e.g., from attempting to
+// load a new token store), that error will be returned and the configuration
+// will not bet set.
 func (api *API) SetConfig(newConfig config.Config) error {
 	api.configLock.Lock()
 	defer api.configLock.Unlock()
 
+	return api.setConfigUnsafe(newConfig)
+}
+
+// Unsafely set the configuration.
+//
+// If there is an error setting the configuration (e.g., from attempting to
+// load a new token store), that error will be returned and the configuration
+// will not bet set.
+//
+// This is called internally by SetConfig (because we have acquired the lock)
+// and in New (because the API object is still internal at that point). It is
+// used in the latter case to avoid the overhead of unnecessary
+// locking/unlocking.
+func (api *API) setConfigUnsafe(newConfig config.Config) error {
 	if api.config.TokenStorePath != newConfig.TokenStorePath {
 		store, err := tokens.NewStore(newConfig.TokenStorePath)
 		if err != nil {
@@ -87,6 +105,12 @@ func (api *API) SetConfig(newConfig config.Config) error {
 		api.tokenStore = store
 	}
 
+	provider, err := newHtpasswdSecretProvider(newConfig.HtpasswdPath)
+	if err != nil {
+		return err
+	}
+
+	api.authenticator.Secrets = provider
 	api.config = newConfig
 	return nil
 }
@@ -179,26 +203,9 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	loggingMiddleware(api.router).ServeHTTP(w, r)
 }
 
-func (api *API) validateCredentials(username, password string) bool {
-	validUsername := subtle.ConstantTimeCompare([]byte(username), []byte(api.config.Username))
-	validPassword := subtle.ConstantTimeCompare([]byte(password), []byte(api.config.Password))
-
-	return validUsername+validPassword == 2
-}
-
-func (api *API) CreateSession(r *http.Request) (*Session, error) {
-	username, password, ok := r.BasicAuth()
-	if !ok {
-		return nil, errors.New("Invalid Authorization header.")
-	}
-
-	if !api.validateCredentials(username, password) {
-		return nil, errors.New("Authorization failed.")
-	}
-
-	token, err := api.tokenStore.New()
-	if err != nil {
-		return nil, err
-	}
-	return &Session{PrivateToken: *token}, nil
+// Return the token store.
+//
+// This is intended for use only by unit tests.
+func (api *API) GetTokenStore() *tokens.TokenStore {
+	return &api.tokenStore
 }

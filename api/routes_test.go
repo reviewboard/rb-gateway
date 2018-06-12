@@ -26,16 +26,15 @@ func testRoute(t *testing.T, cfg config.Config, url, method string) *httptest.Re
 	handler, err := api.New(cfg)
 	assert.Nil(err)
 
+	tokenStore := handler.GetTokenStore()
+	token, err := (*tokenStore).New()
+
 	response := httptest.NewRecorder()
 
 	request, err := http.NewRequest(method, url, nil)
 	assert.Nil(err)
 
-	request.SetBasicAuth(cfg.Username, cfg.Password)
-	session, err := handler.CreateSession(request)
-	assert.Nil(err)
-
-	request.Header.Set(api.PrivateTokenHeader, session.PrivateToken)
+	request.Header.Set(api.PrivateTokenHeader, *token)
 
 	handler.ServeHTTP(response, request)
 
@@ -52,6 +51,7 @@ func TestGetFileAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
@@ -75,6 +75,7 @@ func TestFileExistsAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	fileId := helpers.GetRepositoryFileId(t, rawRepo, "README").String()
 
@@ -98,6 +99,7 @@ func testGetFileByCommitAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
@@ -124,6 +126,7 @@ func TestFileExistsByCommitAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
@@ -144,6 +147,7 @@ func TestGetBranchesAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	url := fmt.Sprintf("/repos/%s/branches", "repo")
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
@@ -158,6 +162,7 @@ func TestGetCommitsAPI(t *testing.T) {
 	branchName := branch.Name().Short()
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	url := fmt.Sprintf("/repos/%s/branches/%s/commits", "repo", branchName)
 	assert.Equal(t, http.StatusOK, testRoute(t, cfg, url, "GET").Code)
@@ -172,6 +177,7 @@ func TestGetCommitAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
 
 	head := helpers.GetRepoHead(t, rawRepo).String()
 
@@ -195,11 +201,13 @@ func TestGetSessionAPI(t *testing.T) {
 	helpers.CreateTestBranch(t, repo, rawRepo)
 
 	cfg := helpers.CreateTestConfig(t, repo)
+	helpers.CreateTestHtpasswd(t, "username", "password", &cfg)
+	defer helpers.CleanupConfig(t, cfg)
 
 	request, err := http.NewRequest("GET", "/session", nil)
 	assert.Nil(err)
 
-	request.SetBasicAuth(cfg.Username, cfg.Password)
+	request.SetBasicAuth("username", "password")
 
 	response := httptest.NewRecorder()
 	handler, err := api.New(cfg)

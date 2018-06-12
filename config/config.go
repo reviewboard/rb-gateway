@@ -20,14 +20,13 @@ type repositoryData struct {
 }
 
 type Config struct {
-	Password       string           `json:"password"`
+	HtpasswdPath   string           `json:"htpasswdPath"`
 	Port           uint16           `json:"port"`
 	RepositoryData []repositoryData `json:"repositories"`
 	SSLCertificate string           `json:"sslCertificate"`
 	SSLKey         string           `json:"sslKey"`
 	TokenStorePath string           `json:"tokenStorePath"`
 	UseTLS         bool             `json:"useTLS"`
-	Username       string           `json:"username"`
 
 	Repositories map[string]repositories.Repository
 }
@@ -82,14 +81,6 @@ func validate(cfgDir string, config *Config) (err error) {
 		config.Port = 8888
 	}
 
-	if config.Username == "" {
-		missingFields = append(missingFields, "username")
-	}
-
-	if config.Password == "" {
-		missingFields = append(missingFields, "password")
-	}
-
 	if len(config.RepositoryData) == 0 {
 		missingFields = append(missingFields, "repositories")
 	}
@@ -112,6 +103,12 @@ func validate(cfgDir string, config *Config) (err error) {
 		missingFields = append(missingFields, "tokenStorePath")
 	} else if config.TokenStorePath != ":memory:" {
 		config.TokenStorePath = resolvePath(cfgDir, config.TokenStorePath)
+	}
+
+	if config.HtpasswdPath == "" {
+		missingFields = append(missingFields, "htpasswdPath")
+	} else {
+		config.HtpasswdPath = resolvePath(cfgDir, config.HtpasswdPath)
 	}
 
 	if len(missingFields) != 0 {

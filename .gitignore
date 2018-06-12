@@ -1,5 +1,8 @@
+vendor/
+
 *.swp
+
 config.json
+htpasswd
 rb-gateway
 tokens.dat
-vendor/

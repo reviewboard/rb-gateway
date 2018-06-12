@@ -23,18 +23,17 @@ func TestLoadConfig(t *testing.T) {
 	path := file.Name()
 	defer os.Remove(path)
 
-	var port uint16 = 8888
-	var username string = "username"
-	var password string = "password"
+	htpasswdPath := "htpasswd"
+	port := uint16(8888)
+	tokenStorePath := ":memory:"
 
 	repo, _ := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
 	_, err = file.WriteString(fmt.Sprintf(`
 		{
+			"htpasswdPath": "%s",
 			"port": %d,
-			"username": "%s",
-			"password": "%s",
 			"repositories": [
 				{
 					"name": "%s",
@@ -42,18 +41,22 @@ func TestLoadConfig(t *testing.T) {
 					"scm": "%s"
 				}
 			],
-			"tokenStorePath": ":memory:"
+			"tokenStorePath": "%s"
 		}
 		`,
-		port, username, password,
-		repo.GetName(), repo.GetPath(), repo.GetScm()))
+		htpasswdPath,
+		port,
+		repo.GetName(),
+		repo.GetPath(),
+		repo.GetScm(),
+		tokenStorePath))
 
 	loaded, err := config.Load(path)
 	assert.Nil(err)
 
+	assert.Equal(loaded.HtpasswdPath, filepath.Join(filepath.Dir(path), htpasswdPath))
 	assert.Equal(loaded.Port, port)
-	assert.Equal(loaded.Username, username)
-	assert.Equal(loaded.Password, password)
+	assert.Equal(loaded.TokenStorePath, tokenStorePath)
 
 	assert.Equal(len(loaded.Repositories), 1)
 	assert.Contains(loaded.Repositories, repo.Name)
@@ -62,6 +65,7 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(loadedRepo.GetName(), repo.Name)
 	assert.Equal(loadedRepo.GetPath(), repo.Path)
 	assert.Equal(loadedRepo.GetScm(), repo.GetScm())
+
 }
 
 func TestLoadConfigAllFieldsMissing(t *testing.T) {
@@ -95,13 +99,9 @@ func TestLoadConfigPortMissing(t *testing.T) {
 	repo, _ := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	username := "username"
-	password := "password"
-
 	_, err = file.WriteString(fmt.Sprintf(`
 		{
-			"username": "%s",
-			"password": "%s",
+			"htpasswdPath": "htpasswd",
 			"repositories": [
 				{
 					"name": "%s",
@@ -112,7 +112,6 @@ func TestLoadConfigPortMissing(t *testing.T) {
 			"tokenStorePath": ":memory:"
 		}
 		`,
-		username, password,
 		repo.GetName(), repo.GetPath(), repo.GetScm()))
 
 	file.Close()
@@ -122,8 +121,7 @@ func TestLoadConfigPortMissing(t *testing.T) {
 	assert.NotNil(cfg)
 
 	assert.Equal(uint16(8888), cfg.Port)
-	assert.Equal(username, cfg.Username)
-	assert.Equal(password, cfg.Password)
+	assert.Equal(filepath.Join(filepath.Dir(path), "htpasswd"), cfg.HtpasswdPath)
 
 	assert.Equal(1, len(cfg.Repositories))
 	assert.Contains(cfg.Repositories, repo.Name)
@@ -146,13 +144,9 @@ func TestLoadConfigTlsMissing(t *testing.T) {
 	repo, _ := helpers.CreateTestRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	username := "username"
-	password := "password"
-
 	_, err = file.WriteString(fmt.Sprintf(`
 		{
-			"username": "%s",
-			"password": "%s",
+			"htpasswdPath": "htpasswd",
 			"useTLS": true,
 			"repositories": [
 				{
@@ -163,7 +157,6 @@ func TestLoadConfigTlsMissing(t *testing.T) {
 			]
 		}
 		`,
-		username, password,
 		repo.GetName(), repo.GetPath(), repo.GetScm()))
 
 	file.Close()
@@ -186,15 +179,12 @@ func TestLoadConfigTls(t *testing.T) {
 	cfgFile, err := os.OpenFile(cfgPath, os.O_WRONLY|os.O_CREATE, 0600)
 	assert.Nil(err)
 
-	username := "username"
-	password := "password"
 	sslCertificate := "foo.pem"
 	sslKey := "/etc/ssl/private/keys/foo.key"
 
 	_, err = cfgFile.WriteString(fmt.Sprintf(`
 		{
-			"username": "%s",
-			"password": "%s",
+			"htpasswdPath": "htpasswd",
 			"useTLS": true,
 			"sslCertificate": "%s",
 			"sslKey": "%s",
@@ -208,7 +198,7 @@ func TestLoadConfigTls(t *testing.T) {
 			]
 		}
 		`,
-		username, password, sslCertificate, sslKey,
+		sslCertificate, sslKey,
 		repo.GetName(), repo.GetPath(), repo.GetScm()))
 
 	cfgFile.Close()
@@ -218,8 +208,6 @@ func TestLoadConfigTls(t *testing.T) {
 	assert.NotNil(cfg)
 
 	assert.Equal(uint16(8888), cfg.Port)
-	assert.Equal(username, cfg.Username)
-	assert.Equal(password, cfg.Password)
 	assert.True(cfg.UseTLS)
 	assert.Equal(filepath.Join(dir, sslCertificate), cfg.SSLCertificate)
 	assert.Equal(sslKey, cfg.SSLKey)

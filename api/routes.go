@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
+	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 
 	"github.com/reviewboard/rb-gateway/repositories"
@@ -13,17 +15,21 @@ import (
 // Return a session given basic auth credentials.
 //
 // URL: `/session`
-func (api API) getSession(w http.ResponseWriter, r *http.Request) {
-	session, err := api.CreateSession(r)
+func (api API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	token, err := api.tokenStore.New()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		log.Printf("Could not create session: %s", err.Error())
+		http.Error(w, "Could not create session", http.StatusInternalServerError)
 	}
 
-	json, err := json.Marshal(session)
+	session := Session{
+		PrivateToken: *token,
+	}
+
+	json, err := json.Marshal(&session)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Could not serialize session: %s", err.Error()),
-			http.StatusInternalServerError)
+		log.Printf("Could not serialize session: %s", err.Error())
+		http.Error(w, "Could not create session", http.StatusInternalServerError)
 		return
 	}
 

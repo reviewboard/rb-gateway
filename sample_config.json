@@ -1,7 +1,6 @@
 {
+    "htpasswdPath": "htpasswd",
     "port": 8888,
-    "username": "username",
-    "password": "password",
     "tokenStorePath": "tokens.dat",
     "repositories": [
         {"name": "repo1", "path": "/path/to/repo1.git", "scm": "git"},
