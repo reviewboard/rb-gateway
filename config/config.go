@@ -13,6 +13,10 @@ import (
 
 const DefaultConfigPath = "config.json"
 
+const (
+	defaultPort uint16 = 8888
+)
+
 type repositoryData struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
@@ -77,8 +81,8 @@ func validate(cfgDir string, config *Config) (err error) {
 	missingFields := []string{}
 
 	if config.Port == 0 {
-		log.Printf("WARNING: Port missing, defaulting to 8888.")
-		config.Port = 8888
+		log.Printf("WARNING: Port missing from config, defaulting to %d.", defaultPort)
+		config.Port = defaultPort
 	}
 
 	if len(config.RepositoryData) == 0 {
@@ -99,17 +103,27 @@ func validate(cfgDir string, config *Config) (err error) {
 		}
 	}
 
-	if config.TokenStorePath == "" {
-		missingFields = append(missingFields, "tokenStorePath")
-	} else if config.TokenStorePath != ":memory:" {
+	optionalPathFields := []struct {
+		field        *string
+		name         string
+		defaultValue string
+	}{
+		{&config.TokenStorePath, "tokenStorePath", "tokens.dat"},
+		{&config.HtpasswdPath, "htpasswdPath", "htpasswd"},
+	}
+
+	for _, fieldInfo := range optionalPathFields {
+		if *fieldInfo.field == "" {
+			log.Printf(`Warning: %s missing from config, defaulting to "%v".`, fieldInfo.name, fieldInfo.defaultValue)
+			*fieldInfo.field = fieldInfo.defaultValue
+		}
+	}
+
+	if config.TokenStorePath != ":memory:" {
 		config.TokenStorePath = resolvePath(cfgDir, config.TokenStorePath)
 	}
 
-	if config.HtpasswdPath == "" {
-		missingFields = append(missingFields, "htpasswdPath")
-	} else {
-		config.HtpasswdPath = resolvePath(cfgDir, config.HtpasswdPath)
-	}
+	config.HtpasswdPath = resolvePath(cfgDir, config.HtpasswdPath)
 
 	if len(missingFields) != 0 {
 		err = fmt.Errorf("Some required fields were missing from the configuration: %s.", strings.Join(missingFields, ","))
