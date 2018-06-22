@@ -15,7 +15,7 @@ import (
 // Return a session given basic auth credentials.
 //
 // URL: `/session`
-func (api API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (api *API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 	token, err := api.tokenStore.New()
 
 	if err != nil {
@@ -41,7 +41,7 @@ func (api API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 // Return the branches in the repository.
 //
 // URL: `/repos/<repo>/branches`
-func (api API) getBranches(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getBranches(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 
 	var branches []repositories.Branch
@@ -62,7 +62,7 @@ func (api API) getBranches(w http.ResponseWriter, r *http.Request) {
 // Return the commits for a branch.
 //
 // URL: `/repos/<repo>/branches/<branch>/commits?start=<start>`
-func (api API) getCommits(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getCommits(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	params := mux.Vars(r)
 	branch := params["branch"]
@@ -89,7 +89,7 @@ func (api API) getCommits(w http.ResponseWriter, r *http.Request) {
 // Return a commit.
 //
 // URL: `/repos/<repo>/commit/<commit-id>`
-func (api API) getCommit(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	params := mux.Vars(r)
 	commitId := params["commit-id"]
@@ -116,7 +116,7 @@ func (api API) getCommit(w http.ResponseWriter, r *http.Request) {
 // Return the contents of a file (identified by an object ID) in a repository.
 //
 // URL: `/repos/<repo>/file/<file-id>`
-func (api API) getFile(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getFile(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
@@ -137,7 +137,7 @@ func (api API) getFile(w http.ResponseWriter, r *http.Request) {
 // Return whether or not a file (identified by an object ID) exists in a repository.
 //
 // URL: `/repos/<repo>/file/<file-id>`
-func (api API) getFileExists(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getFileExists(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
@@ -159,7 +159,7 @@ func (api API) getFileExists(w http.ResponseWriter, r *http.Request) {
 // Return the contents of a file (at a specific commit) in a repository.
 //
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
-func (api API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	params := mux.Vars(r)
 
@@ -187,7 +187,7 @@ func (api API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 // Return whether or not a file (at a specific commit) exists in the repository.
 //
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
-func (api API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value("repo").(repositories.Repository)
 	params := mux.Vars(r)
 
@@ -222,6 +222,6 @@ func (api API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 // 200 OK.
 //
 // URL: `/repos/<repo>/path`
-func (api API) getPath(w http.ResponseWriter, r *http.Request) {
+func (_ *API) getPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }

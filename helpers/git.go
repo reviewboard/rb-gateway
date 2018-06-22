@@ -41,7 +41,7 @@ func CreateGitRepo(t *testing.T, name string) (*repositories.GitRepository, *git
 	assert.Nil(err, "Could not initialize repository.")
 
 	repo := &repositories.GitRepository{
-		repositories.RepositoryInfo{
+		RepositoryInfo: repositories.RepositoryInfo{
 			Name: name,
 			Path: path,
 		},

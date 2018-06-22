@@ -160,7 +160,7 @@ func (api *API) Serve() *http.Server {
 //
 // If the requested repository exists, it will be provided through the context
 // as `"repo"`. Otherwise, an appropriate error will be returned.
-func (api API) withRepository(next http.Handler) http.Handler {
+func (api *API) withRepository(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		repoName := mux.Vars(r)["repo"]
 
@@ -179,7 +179,7 @@ func (api API) withRepository(next http.Handler) http.Handler {
 }
 
 // TODO: Replace this with actual token logic.
-func (api API) withAuthorizationRequired(next http.Handler) http.Handler {
+func (api *API) withAuthorizationRequired(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if api.tokenStore.Get(r) == nil {
 			http.Error(w, "Authorization failed.", http.StatusUnauthorized)

@@ -24,7 +24,7 @@ func CreateTestConfig(t *testing.T, repos ...repositories.Repository) config.Con
 	for _, repo := range repos {
 		name := repo.GetName()
 		cfg.Repositories[name] = &repositories.GitRepository{
-			repositories.RepositoryInfo{
+			RepositoryInfo: repositories.RepositoryInfo{
 				Name: repo.GetName(),
 				Path: repo.GetPath(),
 			},

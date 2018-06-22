@@ -63,7 +63,7 @@ func Load(path string) (*Config, error) {
 		switch repo.Scm {
 		case "git":
 			config.Repositories[repo.Name] = &repositories.GitRepository{
-				repositories.RepositoryInfo{
+				RepositoryInfo: repositories.RepositoryInfo{
 					Name: repo.Name,
 					Path: repo.Path,
 				},
