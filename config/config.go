@@ -60,13 +60,20 @@ func Load(path string) (*Config, error) {
 	config.Repositories = make(map[string]repositories.Repository)
 
 	for _, repo := range config.RepositoryData {
+		info := repositories.RepositoryInfo{
+			Name: repo.Name,
+			Path: repo.Path,
+		}
+
 		switch repo.Scm {
 		case "git":
 			config.Repositories[repo.Name] = &repositories.GitRepository{
-				RepositoryInfo: repositories.RepositoryInfo{
-					Name: repo.Name,
-					Path: repo.Path,
-				},
+				RepositoryInfo: info,
+			}
+
+		case "hg":
+			config.Repositories[repo.Name] = &repositories.HgRepository{
+				RepositoryInfo: info,
 			}
 
 		default:

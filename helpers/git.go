@@ -52,7 +52,7 @@ func CreateGitRepo(t *testing.T, name string) (*repositories.GitRepository, *git
 
 // Add files to a repository and commit them, returning the commit ID.
 //
-// Callers can compare committed file contents with the result of `testing.GetRepoFiles`.
+// Callers can compare committed file contents with the result of `helpers.GetRepoFiles`.
 func SeedGitRepo(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) plumbing.Hash {
 	t.Helper()
 	assert := assert.New(t)
@@ -76,7 +76,7 @@ func SeedGitRepo(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Re
 
 // Create a new branch with some test files, returning the commit ID.
 //
-// Callers can compare committed file contents with the result of `testing.GetRepoFiles`.
+// Callers can compare committed file contents with the result of `helpers.GetRepoFiles`.
 func CreateGitBranch(t *testing.T, repo *repositories.GitRepository, rawRepo *git.Repository) *plumbing.Reference {
 	t.Helper()
 	assert := assert.New(t)

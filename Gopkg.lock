@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "default"
+  name = "bitbucket.org/gohg/gohg"
+  packages = ["."]
+  revision = "32d5a063a72bdf016a2600b966d741977761eda3"
+
+[[projects]]
   name = "github.com/abbot/go-http-auth"
   packages = ["."]
   revision = "0ddd408d5d60ea76e320503cc7dd091992dee608"
@@ -229,6 +235,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e9df4047c083316bc75ca48edfa7c450e1ec3064a8be756710e459cc2e50bbd6"
+  inputs-digest = "590985d35a357a89050921eaf400f9e8454483fe6abffe32d7a77495360cb320"
   solver-name = "gps-cdcl"
   solver-version = 1

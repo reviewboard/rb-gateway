@@ -27,3 +27,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/foomo/htpasswd"
+
+[[constraint]]
+  branch = "default"
+  name = "bitbucket.org/gohg/gohg"
