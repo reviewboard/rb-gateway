@@ -31,3 +31,7 @@
 [[constraint]]
   branch = "default"
   name = "bitbucket.org/gohg/gohg"
+
+[[constraint]]
+  name = "github.com/alecthomas/kingpin"
+  version = "2.0.0"
