@@ -1,0 +1,11 @@
+[Unit]
+Description=Review Board Gateway
+After=network.target
+
+[Service]
+User=rb-gateway
+KillSignal=SIGTERM
+ExecStart=/opt/rb-gateway/bin/rb-gateway --config /opt/rb-gateway/etc/rb-gateway.json
+
+[Install]
+WantedBy=multi-user.target
