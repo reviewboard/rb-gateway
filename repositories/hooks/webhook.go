@@ -1,5 +1,11 @@
 package hooks
 
+import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
+)
+
 type Webhook struct {
 	// A unique ID for the webhook.
 	Id string `json:"id"`
@@ -18,4 +24,12 @@ type Webhook struct {
 
 	// A sorted list of repository names that this webhook applies to.
 	Repos []string `json:"repos"`
+}
+
+// Return an HMAC-SHA1 signature of the payload using the hook's secret.
+func (hook Webhook) SignPayload(payload []byte) string {
+	hmac := hmac.New(sha1.New, []byte(hook.Secret))
+	hmac.Write(payload)
+
+	return hex.EncodeToString(hmac.Sum(nil))
 }
