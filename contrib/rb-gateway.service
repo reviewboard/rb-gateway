@@ -5,7 +5,8 @@ After=network.target
 [Service]
 User=rb-gateway
 KillSignal=SIGTERM
-ExecStart=/opt/rb-gateway/bin/rb-gateway --config /opt/rb-gateway/etc/rb-gateway.json
+ExecStart=/usr/local/bin/rb-gateway --config /etc/rb-gateway.conf
+ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target

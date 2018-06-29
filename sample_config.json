@@ -2,6 +2,7 @@
     "htpasswdPath": "htpasswd",
     "port": 8888,
     "tokenStorePath": "tokens.dat",
+    "webhookStorePath": "webhooks.json",
     "repositories": [
         {"name": "repo1", "path": "/path/to/repo1.git", "scm": "git"},
         {"name": "repo2", "path": "/path/to/repo2.hg", "scm": "hg"}
