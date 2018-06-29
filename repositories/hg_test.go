@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/reviewboard/rb-gateway/helpers"
+	"github.com/reviewboard/rb-gateway/repositories/events"
 )
 
 func TestHgGetName(t *testing.T) {
@@ -174,4 +175,91 @@ func TestHgGetCommit(t *testing.T) {
 	assert.Nil(err)
 
 	assert.Equal(commit.Diff, string(output))
+}
+
+func TestParsePushEvent(t *testing.T) {
+	assert := assert.New(t)
+
+	repo, client := helpers.CreateHgRepo(t, "hg-repo")
+	defer helpers.CleanupHgRepo(t, client)
+	fmt.Println("====== CWD: ", repo.Path)
+
+	files := []map[string][]byte{
+		{"foo": []byte("foo")},
+		{"bar": []byte("bar")},
+		{"baz": []byte("baz")},
+		{"qux": []byte("qux")},
+	}
+
+	nodes := make([]string, 0, 5)
+
+	for i, filesToAdd := range files[:3] {
+		helpers.CreateAndAddFilesHg(t, repo.Path, client, filesToAdd)
+		commitId := helpers.CommitHg(t, client, fmt.Sprintf("Commit %d", i), helpers.DefaultAuthor)
+		nodes = append(nodes, commitId)
+	}
+
+	tagId := helpers.CreateHgTag(t, client, nodes[2], "commit-2", "Tag commit-2", helpers.DefaultAuthor)
+	nodes = append(nodes, tagId)
+
+	for i, filesToAdd := range files[3:] {
+		helpers.CreateAndAddFilesHg(t, repo.Path, client, filesToAdd)
+		commitId := helpers.CommitHg(t, client, fmt.Sprintf("Commit %d", 3+i), helpers.DefaultAuthor)
+		nodes = append(nodes, commitId)
+	}
+
+	helpers.CreateHgBookmark(t, client, nodes[4], "bookmark-1")
+
+	env := map[string]string{
+		"HG_NODE":      nodes[1],
+		"HG_NODE_LAST": nodes[4],
+	}
+
+	var payload events.Payload
+	var err error
+
+	helpers.WithEnv(t, env, func() {
+		payload, err = repo.ParseEventPayload(events.PushEvent, nil)
+	})
+
+	assert.Nil(err)
+
+	expected := events.PushPayload{
+		Repository: repo.Name,
+		Commits: []events.PushPayloadCommit{
+			{
+				Id:      nodes[1],
+				Message: "Commit 1",
+				Target: events.PushPayloadCommitTarget{
+					Branch: "default",
+				},
+			},
+			{
+				Id:      nodes[2],
+				Message: "Commit 2",
+				Target: events.PushPayloadCommitTarget{
+					Branch: "default",
+					Tags:   []string{"commit-2"},
+				},
+			},
+			{
+				Id:      nodes[3],
+				Message: "Tag commit-2",
+				Target: events.PushPayloadCommitTarget{
+					Branch: "default",
+				},
+			},
+			{
+				Id:      nodes[4],
+				Message: "Commit 3",
+				Target: events.PushPayloadCommitTarget{
+					Branch:    "default",
+					Bookmarks: []string{"bookmark-1"},
+					Tags:      []string{"tip"},
+				},
+			},
+		},
+	}
+
+	assert.Equal(expected, payload)
 }

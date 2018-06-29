@@ -1,5 +1,11 @@
 package repositories
 
+import (
+	"io"
+
+	"github.com/reviewboard/rb-gateway/repositories/events"
+)
+
 // RepositoryInfo is a generic representation of a repository, containing
 // a name and a path to the repository.
 type RepositoryInfo struct {
@@ -52,6 +58,9 @@ type Repository interface {
 	// GetCommit returns the commit in the repository provided by the commit
 	// id as a JSON byte array. If an error occurs, it will also be returned.
 	GetCommit(commitId string) (*Commit, error)
+
+	// Parse the raw payload from the given event.
+	ParseEventPayload(event string, input io.Reader) (events.Payload, error)
 }
 
 // Metadata about a commit.

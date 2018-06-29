@@ -67,17 +67,10 @@ func CleanupHgRepo(t *testing.T, client *hg.HgClient) {
 // Callers can compare committed file contents with the result of `helpers.GetRepoFiles`.
 func SeedHgRepo(t *testing.T, repo *repositories.HgRepository, client *hg.HgClient) string {
 	t.Helper()
-	assert := assert.New(t)
 
-	createAndAddFilesHg(t, repo.Path, client, repoFiles)
+	CreateAndAddFilesHg(t, repo.Path, client, repoFiles)
 
-	_, err := client.ExecCmd([]string{"commit", "-m", "Commit message", "-u", "Author <author@example.com>"})
-	assert.Nil(err)
-
-	id, err := client.ExecCmd([]string{"log", "-r", ".", "--template", "{node}"})
-	assert.Nil(err)
-
-	return string(id)
+	return CommitHg(t, client, "Commit message", DefaultAuthor)
 }
 
 // Create a new bookmark with some test files, returning the commit ID.
@@ -90,18 +83,12 @@ func SeedHgBookmark(t *testing.T, repo *repositories.HgRepository, client *hg.Hg
 	_, err := client.ExecCmd([]string{"bookmark", "test-bookmark"})
 	assert.Nil(err)
 
-	createAndAddFilesHg(t, repo.Path, client, branchFiles)
+	CreateAndAddFilesHg(t, repo.Path, client, branchFiles)
 
-	_, err = client.ExecCmd([]string{"commit", "-m", "Branch commit message", "-u", "Author <author@example.com>"})
-	assert.Nil(err)
-
-	id, err := client.ExecCmd([]string{"log", "-r", ".", "--template", "{node}"})
-	assert.Nil(err)
-
-	return string(id)
+	return CommitHg(t, client, "Branch commit message", DefaultAuthor)
 }
 
-func createAndAddFilesHg(t *testing.T, repoPath string, client *hg.HgClient, files map[string][]byte) {
+func CreateAndAddFilesHg(t *testing.T, repoPath string, client *hg.HgClient, files map[string][]byte) {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -113,4 +100,57 @@ func createAndAddFilesHg(t *testing.T, repoPath string, client *hg.HgClient, fil
 		_, err = client.ExecCmd([]string{"add", filename})
 		assert.Nil(err)
 	}
+}
+
+func CommitHg(t *testing.T, client *hg.HgClient, message, author string) string {
+	t.Helper()
+
+	_, err := client.ExecCmd([]string{
+		"commit",
+		"-m", message,
+		"-u", author,
+	})
+	assert.Nil(t, err)
+
+	return GetHgHead(t, client)
+}
+
+func GetHgHead(t *testing.T, client *hg.HgClient) string {
+	t.Helper()
+
+	id, err := client.ExecCmd([]string{
+		"log",
+		"--rev", ".",
+		"--template", "{node}",
+	})
+	assert.Nil(t, err)
+
+	return string(id)
+}
+
+func CreateHgTag(t *testing.T, client *hg.HgClient, node, tag, message, author string) string {
+	t.Helper()
+
+	_, err := client.ExecCmd([]string{
+		"tag",
+		"--rev", node,
+		"-m", message,
+		"-u", author,
+		tag,
+	})
+	assert.Nil(t, err)
+
+	return GetHgHead(t, client)
+
+}
+
+func CreateHgBookmark(t *testing.T, client *hg.HgClient, node, bookmark string) {
+	t.Helper()
+
+	_, err := client.ExecCmd([]string{
+		"bookmark",
+		"--rev", node,
+		bookmark,
+	})
+	assert.Nil(t, err)
 }

@@ -3,6 +3,7 @@ package events
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 )
 
 const (
@@ -10,6 +11,8 @@ const (
 )
 
 var (
+	InvalidEventErr = errors.New("Invalid event")
+
 	exists = struct{}{}
 
 	validEvents = map[string]struct{}{

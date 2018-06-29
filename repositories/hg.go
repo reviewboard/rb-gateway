@@ -1,10 +1,15 @@
 package repositories
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	hg "bitbucket.org/gohg/gohg"
+
+	"github.com/reviewboard/rb-gateway/repositories/events"
 )
 
 const (
@@ -311,6 +316,80 @@ func (repo *HgRepository) Log(client *hg.HgClient, fields, revisions []string, a
 	}
 
 	return records, nil
+}
+
+func (repo *HgRepository) ParseEventPayload(event string, input io.Reader) (events.Payload, error) {
+	if !events.IsValidEvent(event) {
+		return nil, events.InvalidEventErr
+	}
+
+	switch event {
+	case events.PushEvent: // changegroup hook
+		first_node := os.Getenv("HG_NODE")
+		last_node := os.Getenv("HG_NODE_LAST")
+
+		if first_node == "" {
+			return nil, errors.New("No HG_NODE environment variable.")
+		}
+
+		if last_node == "" {
+			last_node = first_node
+		}
+
+		return repo.parsePushEvent(first_node, last_node)
+
+	default:
+		return nil, fmt.Errorf(`Event "%s" is unuspported by Hg.`, event)
+	}
+}
+
+func (repo *HgRepository) parsePushEvent(first_node, last_node string) (events.Payload, error) {
+	records, err := repo.Log(
+		nil,
+		[]string{
+			"{node}",
+			"{desc}",
+			"{branch}",
+			"{bookmarks}",
+			"{tags}",
+		},
+		[]string{
+			fmt.Sprintf("%s:%s", first_node, last_node),
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	payload := events.PushPayload{
+		Repository: repo.Name,
+		Commits:    make([]events.PushPayloadCommit, 0, len(records)),
+	}
+
+	for _, record := range records {
+		var bookmarks []string = nil
+		if record[3] != "" {
+			bookmarks = strings.Split(record[3], " ")
+		}
+
+		var tags []string = nil
+		if record[4] != "" {
+			tags = strings.Split(record[4], " ")
+		}
+
+		payload.Commits = append(payload.Commits, events.PushPayloadCommit{
+			Id:      record[0],
+			Message: record[1],
+			Target: events.PushPayloadCommitTarget{
+				Branch:    record[2],
+				Bookmarks: bookmarks,
+				Tags:      tags,
+			},
+		})
+	}
+
+	return payload, nil
 }
 
 func isNotExist(err error) bool {

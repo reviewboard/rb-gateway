@@ -20,6 +20,10 @@ var (
 	}
 )
 
+const (
+	DefaultAuthor = "Author <author@example.com>"
+)
+
 // Get the files contained in the repository.
 //
 // This returns a copy of the original data structure, so it may be mutated by callers.

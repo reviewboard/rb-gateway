@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+
+	"github.com/reviewboard/rb-gateway/repositories/events"
 )
 
 const (
@@ -309,4 +312,8 @@ func (repo *GitRepository) GetCommit(commitId string) (*Commit, error) {
 	}
 
 	return &change, nil
+}
+
+func (repo *GitRepository) ParseEventPayload(event string, input io.Reader) (events.Payload, error) {
+	panic("Unimplemented")
 }
