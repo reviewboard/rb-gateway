@@ -37,6 +37,9 @@ func Serve(configPath string) {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
+	terminate := make(chan os.Signal, 1)
+	signal.Notify(terminate, syscall.SIGTERM)
+
 	for {
 		var newCfg *config.Config = nil
 		shouldExit := false
@@ -65,6 +68,10 @@ func Serve(configPath string) {
 			signal.Reset(os.Interrupt)
 			log.Println("Received SIGINT, shutting down...")
 			log.Println("CONTROL-C again to force quit.")
+
+		case <-terminate:
+			shouldExit = true
+			log.Println("Received SIGTERM, shutting down...")
 		}
 
 		err = api.Shutdown(server)
