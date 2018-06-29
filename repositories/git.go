@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
 
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/reviewboard/rb-gateway/repositories/events"
 )
@@ -17,6 +19,12 @@ const (
 	commitsPageSize        = 20 // The max page size for commits.
 	branchesAllocationSize = 10 // The initial allocation size for branches.
 	patchIndexLength       = 40 // The patch index length.
+
+	refsHeadsPrefix = "refs/heads/"
+)
+
+var (
+	nullRevision = plumbing.NewHash(strings.Repeat("0", 40))
 )
 
 // GitRepository extends RepositoryInfo and is meant to represent a Git
@@ -315,5 +323,223 @@ func (repo *GitRepository) GetCommit(commitId string) (*Commit, error) {
 }
 
 func (repo *GitRepository) ParseEventPayload(event string, input io.Reader) (events.Payload, error) {
-	panic("Unimplemented")
+	if !events.IsValidEvent(event) {
+		return nil, events.InvalidEventErr
+	}
+
+	gitRepo, err := git.PlainOpen(repo.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	switch event {
+	case events.PushEvent: // post-receive
+		return repo.parsePushEvent(gitRepo, event, input)
+
+	default:
+		return nil, fmt.Errorf(`Event "%s" unsupported by Git.`, event)
+	}
+}
+
+// Parse a post-receive hook and turn it into a PushPayload
+func (repo *GitRepository) parsePushEvent(
+	gitRepo *git.Repository,
+	event string,
+	input io.Reader,
+) (events.Payload, error) {
+	data, err := ioutil.ReadAll(input)
+
+	if err != nil {
+		return nil, err
+	} else if len(data) == 0 {
+		return nil, errors.New("No input")
+	}
+
+	records := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+
+	// A set of all commit hashes we have processed. A commit may appear in
+	// more than one set of updated refs.
+	seen := make(map[plumbing.Hash]bool)
+
+	payload := events.PushPayload{
+		Repository: repo.Name,
+		Commits:    []events.PushPayloadCommit{},
+	}
+
+	for _, record := range records {
+		fields := strings.Split(record, " ")
+		if len(fields) != 3 {
+			return nil, errors.New("Invalid input format")
+		}
+
+		oldRevision := plumbing.NewHash(fields[0])
+		newRevision := plumbing.NewHash(fields[1])
+		refName := fields[2]
+
+		// This revision was deleted and therefore doesn't correspond to new
+		// changes being pushed.
+		if newRevision == nullRevision {
+			continue
+		}
+
+		if !strings.HasPrefix(refName, refsHeadsPrefix) {
+			// This is some ref type we don't care about.
+			continue
+		}
+		branchName := strings.TrimPrefix(refName, refsHeadsPrefix)
+
+		ignore := []plumbing.Hash{}
+
+		if oldRevision == nullRevision {
+			// A new branch was created. We only want refs belonging to this
+			// branch, so we are going to ignore all refs belonging to other
+			// branches.
+			iter, err := gitRepo.Branches()
+			if err != nil {
+				return nil, err
+			}
+
+			err = iter.ForEach(func(r *plumbing.Reference) error {
+				if r.Name().String() != refName {
+					ignore = append(ignore, r.Hash())
+				}
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			base, err := mergeBase(gitRepo, newRevision, oldRevision)
+
+			if err != nil {
+				return nil, err
+			} else if base != nil {
+				ignore = append(ignore, *base)
+			}
+		}
+
+		startCommit, err := object.GetCommit(gitRepo.Storer, newRevision)
+		if err != nil {
+			return nil, err
+		}
+
+		commits := []*object.Commit{}
+		err = object.NewCommitPreorderIter(startCommit, seen, ignore).
+			ForEach(func(c *object.Commit) error {
+				seen[c.Hash] = true
+				commits = append(commits, c)
+				return nil
+			})
+
+		if err != nil {
+			return nil, err
+		}
+
+		// The commits will be yielded in DAG order, i.e.,
+		// reverse-chronological order. We want to go through them in
+		// chronological order, so we traverse this slice in reverse.
+		for i := len(commits) - 1; i >= 0; i-- {
+			commit := commits[i]
+			payload.Commits = append(payload.Commits, events.PushPayloadCommit{
+				Id:      commit.Hash.String(),
+				Message: commit.Message,
+				Target: events.PushPayloadCommitTarget{
+					Branch: branchName,
+				},
+			})
+		}
+	}
+
+	return payload, nil
+}
+
+func setDefault(m map[plumbing.Hash]struct{}, h plumbing.Hash) map[plumbing.Hash]struct{} {
+	if m == nil {
+		m = make(map[plumbing.Hash]struct{})
+	}
+	m[h] = struct{}{}
+	return m
+}
+
+// Return a merge base between the two commits.
+//
+// This algorithm is biased to return the closest ancestor of `a` that is
+// common to `a` and `b`.
+//
+// Other bases may exist.
+func mergeBase(gitRepo *git.Repository, a, b plumbing.Hash) (*plumbing.Hash, error) {
+	commitA, err := object.GetCommit(gitRepo.Storer, a)
+	if err != nil {
+		return nil, err
+	}
+
+	commitB, err := object.GetCommit(gitRepo.Storer, b)
+	if err != nil {
+		return nil, err
+	}
+
+	// The direct descendants of each commit.
+	directDescendants := make(map[plumbing.Hash]map[plumbing.Hash]struct{})
+
+	// Ancestors of commit A.
+	ancestors := make(map[plumbing.Hash]int)
+	maxDistance := 0
+
+	err = object.NewCommitPreorderIter(commitA, nil, nil).
+		ForEach(func(c *object.Commit) error {
+			maxDistance++
+			ancestors[c.Hash] = maxDistance
+			for _, p := range c.ParentHashes {
+				directDescendants[p] = setDefault(directDescendants[p], c.Hash)
+			}
+			return nil
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Find all common ancestors of A and B.
+	commonAncestors := make(map[plumbing.Hash]struct{})
+	err = object.NewCommitPreorderIter(commitB, nil, nil).
+		ForEach(func(c *object.Commit) error {
+			if _, exists := ancestors[c.Hash]; exists {
+				commonAncestors[c.Hash] = struct{}{}
+			} else {
+				for _, p := range c.ParentHashes {
+					directDescendants[p] = setDefault(directDescendants[p], c.Hash)
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(commonAncestors) == 0 {
+		return nil, nil
+	}
+
+	var best plumbing.Hash
+	minDistance := -1
+
+	// We want to select the commit the closest distance to a.
+outer:
+	for h := range commonAncestors {
+		// Any commit with a child that is a common ancestor of `a` and `b`
+		// cannot be the closest to `a` by definition.
+		for child := range directDescendants[h] {
+			if _, exists := commonAncestors[child]; exists {
+				continue outer
+			}
+		}
+
+		distance := ancestors[h]
+		if distance < minDistance || minDistance == -1 {
+			minDistance = distance
+			best = h
+		}
+	}
+
+	return &best, nil
 }
