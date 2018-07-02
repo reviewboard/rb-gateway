@@ -24,6 +24,8 @@ var (
 	event = webhook.Arg("event", "The name of the event.").
 		Required().
 		String()
+
+	reinstallHooks = app.Command("reinstall-hooks", "Re-install hook scripts if  the configuration path has changed.")
 )
 
 func main() {
@@ -33,5 +35,8 @@ func main() {
 
 	case webhook.FullCommand():
 		commands.TriggerWebhooks(*configPath, *repoName, *event)
+
+	case reinstallHooks.FullCommand():
+		commands.ReinstallHooks(*configPath)
 	}
 }

@@ -58,7 +58,7 @@ type gitHookData struct {
 }
 
 // Install all hooks for the given repository.
-func (repo *GitRepository) InstallHooks(cfgPath string) (err error) {
+func (repo *GitRepository) InstallHooks(cfgPath string, force bool) (err error) {
 	var commonDir string
 	if commonDir, err = repo.commonDir(); err != nil {
 		return
@@ -86,7 +86,7 @@ func (repo *GitRepository) InstallHooks(cfgPath string) (err error) {
 		hookData.Event = shellquote.Join(event)
 		hookData.HookName = shellquote.Join(hookName)
 
-		err = repo.installHook(hookDir, &hookData)
+		err = repo.installHook(hookDir, &hookData, force)
 		if err != nil {
 			return
 		}
@@ -101,7 +101,10 @@ func (repo *GitRepository) InstallHooks(cfgPath string) (err error) {
 // per event and (2) a RB Gateway-specific script to call `trigger-webhook`. If
 // a hook with the specified name already exists, it will be renamed and moved
 // into the `hookname.d` directory.
-func (repo *GitRepository) installHook(hookDir string, hookData *gitHookData) (err error) {
+//
+// If `force` is `true`, the hooks will be installed over existing hooks if
+// they already exist.
+func (repo *GitRepository) installHook(hookDir string, hookData *gitHookData, force bool) (err error) {
 	dispatchPath := filepath.Join(hookDir, hookData.HookName)
 	scriptDir := filepath.Join(hookDir, fmt.Sprintf("%s.d", hookData.HookName))
 	scriptPath := filepath.Join(scriptDir, fmt.Sprintf("99-rbgateway-%s-event.sh", hookData.Event))
@@ -140,7 +143,7 @@ func (repo *GitRepository) installHook(hookDir string, hookData *gitHookData) (e
 	}
 
 	// If the script to trigger `rbgateway trigger-webhooks` does not exist, create it.
-	if _, err = os.Stat(scriptPath); os.IsNotExist(err) {
+	if _, err = os.Stat(scriptPath); force || os.IsNotExist(err) {
 		t := template.Must(template.New(scriptPath).Parse(gitHookScriptTemplate))
 
 		var f *os.File
@@ -158,7 +161,7 @@ func (repo *GitRepository) installHook(hookDir string, hookData *gitHookData) (e
 	}
 
 	// If the dispatch script does not exist, create it.
-	if _, err = os.Stat(dispatchPath); os.IsNotExist(err) {
+	if _, err = os.Stat(dispatchPath); force || os.IsNotExist(err) {
 		t := template.Must(template.New(dispatchPath).Parse(gitHookDispatchScriptTemplate))
 
 		var f *os.File

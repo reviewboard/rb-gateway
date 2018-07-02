@@ -401,7 +401,7 @@ func (repo *HgRepository) parsePushEvent(first_node, last_node string) (events.P
 	return payload, nil
 }
 
-func (repo *HgRepository) InstallHooks(cfgPath string) error {
+func (repo *HgRepository) InstallHooks(cfgPath string, force bool) error {
 	client, err := repo.Client()
 	if err != nil {
 		return err
@@ -429,7 +429,7 @@ func (repo *HgRepository) InstallHooks(cfgPath string) error {
 
 	for event, hook := range hgEvents {
 		key := fmt.Sprintf("%s.rbgateway", hook)
-		if !hookSection.HasKey(key) {
+		if !hookSection.HasKey(key) || force {
 			hookSection.Key(key).SetValue(shellquote.Join(
 				exePath,
 				"--config",

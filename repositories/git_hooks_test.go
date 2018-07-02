@@ -18,7 +18,7 @@ func TestInstallGitHooks(t *testing.T) {
 	repo, _ := helpers.CreateGitRepo(t, "git-repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	err := repo.InstallHooks("/tmp/config.json")
+	err := repo.InstallHooks("/tmp/config.json", false)
 	if err != nil {
 		assert.Nilf(err, "%s", err.Error())
 	}
@@ -80,7 +80,7 @@ func TestInstallGitHooksQuoted(t *testing.T) {
 	repo, _ := helpers.CreateGitRepo(t, "git-repo with a space")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	err := repo.InstallHooks("/tmp/config with a space.json")
+	err := repo.InstallHooks("/tmp/config with a space.json", false)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -124,7 +124,7 @@ func TestInstallGitHooksPreexisting(t *testing.T) {
 
 	assert.FileExists(dispatchPath)
 
-	err = repo.InstallHooks("/tmp/config")
+	err = repo.InstallHooks("/tmp/config", false)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -139,4 +139,77 @@ func TestInstallGitHooksPreexisting(t *testing.T) {
 	assert.Nil(err)
 
 	assert.Equal("#!/bin/true\n", string(content))
+}
+
+func TestInstallGitHooksForce(t *testing.T) {
+	assert := assert.New(t)
+
+	repo, _ := helpers.CreateGitRepo(t, "repo")
+	defer helpers.CleanupRepository(t, repo.Path)
+
+	err := os.Mkdir(filepath.Join(repo.Path, ".git", "hooks"), 0700)
+	assert.Nil(err)
+
+	err = os.Mkdir(filepath.Join(repo.Path, ".git", "hooks", "post-receive.d"), 0700)
+	assert.Nil(err)
+
+	dispatchPath := filepath.Join(repo.Path, ".git", "hooks", "post-receive")
+	scriptPath := filepath.Join(repo.Path, ".git", "hooks", "post-receive.d", "99-rbgateway-push-event.sh")
+
+	binTrue := []byte("#!/bin/true\n")
+
+	assert.Nil(ioutil.WriteFile(dispatchPath, binTrue, 0600))
+	assert.Nil(ioutil.WriteFile(scriptPath, binTrue, 0600))
+
+	err = repo.InstallHooks("/tmp/config", true)
+	if err != nil {
+		assert.Nil(err, err.Error())
+	}
+
+	assert.DirExists(filepath.Join(repo.Path, ".git", "hooks"))
+	assert.DirExists(filepath.Join(repo.Path, ".git", "hooks", "post-receive.d"))
+	assert.FileExists(dispatchPath)
+	assert.FileExists(scriptPath)
+
+	dispatch, err := ioutil.ReadFile(dispatchPath)
+	assert.Nil(err)
+
+	script, err := ioutil.ReadFile(scriptPath)
+	assert.Nil(err)
+
+	expectedDispatch := `#!/bin/bash
+# Run hooks in .git/hooks/post-receive.d
+# This file was installed by rb-gateway.
+
+HOOK_DIR=$(dirname $0)/post-receive.d
+
+EXIT=0
+
+if [ -d "$HOOK_DIR" ]; then
+	STDIN=$(cat /dev/stdin)
+	for HOOK in ${HOOK_DIR}/*; do
+		if [ -x "$HOOK" ]; then
+			echo -n "$STDIN" | "$HOOK" "$@"
+		fi
+	done
+	LAST_EXIT=$?
+	if [ $LAST_EXIT != 0 ]; then
+		EXIT=$LAST_EXIT
+	fi
+fi
+
+exit $EXIT
+`
+
+	assert.Equal(expectedDispatch, string(dispatch))
+
+	exePath, err := filepath.Abs(os.Args[0])
+	assert.Nil(err)
+
+	expectedScript := fmt.Sprintf(
+		"#!/bin/bash\nexec %s --config /tmp/config trigger-webhooks repo push\n",
+		exePath,
+	)
+
+	assert.Equal(expectedScript, string(script))
 }

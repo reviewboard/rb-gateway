@@ -273,7 +273,7 @@ func TestInstallHgHooks(t *testing.T) {
 	repo, client := helpers.CreateHgRepo(t, "hg-repo")
 	defer helpers.CleanupHgRepo(t, client)
 
-	repo.InstallHooks("/tmp/config.json")
+	repo.InstallHooks("/tmp/config.json", false)
 
 	hgrc, err := ini.Load(filepath.Join(repo.Path, ".hg", "hgrc"))
 	assert.Nil(err)
@@ -293,7 +293,7 @@ func TestInstallHgHooksQuoted(t *testing.T) {
 	repo, client := helpers.CreateHgRepo(t, "hg-repo with a space")
 	defer helpers.CleanupHgRepo(t, client)
 
-	repo.InstallHooks("/tmp/config with a space.json")
+	repo.InstallHooks("/tmp/config with a space.json", false)
 
 	hgrc, err := ini.Load(filepath.Join(repo.Path, ".hg", "hgrc"))
 	assert.Nil(err)
@@ -303,6 +303,28 @@ func TestInstallHgHooksQuoted(t *testing.T) {
 
 	assert.Equal(
 		fmt.Sprintf("%s --config '/tmp/config with a space.json' trigger-webhooks 'hg-repo with a space' push", exePath),
+		hgrc.Section("hooks").Key("changegroup.rbgateway").String(),
+	)
+}
+
+func TestInstallHgHooksForce(t *testing.T) {
+	assert := assert.New(t)
+
+	repo, client := helpers.CreateHgRepo(t, "repo")
+	defer helpers.CleanupHgRepo(t, client)
+
+	assert.Nil(repo.InstallHooks("/tmp/config1", false))
+	assert.Nil(repo.InstallHooks("/tmp/config2", true))
+	assert.Nil(repo.InstallHooks("/tmp/config3", false))
+
+	hgrc, err := ini.Load(filepath.Join(repo.Path, ".hg", "hgrc"))
+	assert.Nil(err)
+
+	exePath, err := filepath.Abs(os.Args[0])
+	assert.Nil(err)
+
+	assert.Equal(
+		fmt.Sprintf("%s --config /tmp/config2 trigger-webhooks repo push", exePath),
 		hgrc.Section("hooks").Key("changegroup.rbgateway").String(),
 	)
 }

@@ -16,6 +16,7 @@ func Serve(configPath string) {
 
 	select {
 	case cfg = <-configWatcher.NewConfig:
+		installHooks(cfg, configPath, false)
 		break
 
 	case err := <-configWatcher.Errors:
@@ -93,6 +94,10 @@ func Serve(configPath string) {
 				log.Printf("Failed to reload configuration: %s\n", err.Error())
 			} else {
 				log.Println("Configuration reloaded.")
+
+				// If we have any new repositories, install hooks for them.
+				// We do not need to force install because configPath has not changed.
+				installHooks(cfg, configPath, false)
 			}
 		}
 	}

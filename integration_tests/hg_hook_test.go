@@ -28,7 +28,7 @@ func TestIntegrationForHgHooks(t *testing.T) {
 
 	hook := setupStore(t, server.URL, &cfg)
 
-	assert.Nil(upstream.InstallHooks(filepath.Join(cfgDir, "config.json")))
+	assert.Nil(upstream.InstallHooks(filepath.Join(cfgDir, "config.json"), false))
 
 	repo, client := cloneHgUpstream(t, upstreamClient)
 	defer helpers.CleanupHgRepo(t, client)

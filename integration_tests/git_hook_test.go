@@ -38,7 +38,7 @@ func TestIntegrtionForGitHooks(t *testing.T) {
 
 	hook := setupStore(t, server.URL, &cfg)
 
-	assert.Nil(upstream.InstallHooks(filepath.Join(cfgDir, "config.json")))
+	assert.Nil(upstream.InstallHooks(filepath.Join(cfgDir, "config.json"), false))
 
 	repo, gitRepo := helpers.CreateGitRepo(t, "clone")
 	defer helpers.CleanupRepository(t, repo.Path)
