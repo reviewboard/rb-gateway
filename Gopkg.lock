@@ -84,6 +84,12 @@
   revision = "d14ea06fba99483203c19d92cfcd13ebe73135f4"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/kballard/go-shellquote"
+  packages = ["."]
+  revision = "95032a82bc518f77982ea72343cc1ade730072f0"
+
+[[projects]]
   name = "github.com/kevinburke/ssh_config"
   packages = ["."]
   revision = "9fc7bb800b555d63157c65a904c86a2cc7b4e795"
@@ -256,6 +262,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "50bdd5a34c1df85f8a3f7904b3d5d2340f2b4fc35d814c317aaefcbafd681ac8"
+  inputs-digest = "e9a4fdb7293c291832d9fb9b904a4d8e286d3ebd9510a4cc35cb1329fcc70a82"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -318,6 +318,10 @@ func (repo *HgRepository) Log(client *hg.HgClient, fields, revisions []string, a
 	return records, nil
 }
 
+func (repo *HgRepository) InstallHooks(cfgPath string) error {
+	panic("unimplemented")
+}
+
 func (repo *HgRepository) ParseEventPayload(event string, input io.Reader) (events.Payload, error) {
 	if !events.IsValidEvent(event) {
 		return nil, events.InvalidEventErr

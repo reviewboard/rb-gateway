@@ -61,6 +61,9 @@ type Repository interface {
 
 	// Parse the raw payload from the given event.
 	ParseEventPayload(event string, input io.Reader) (events.Payload, error)
+
+	// Install scripts to trigger webhooks.
+	InstallHooks(cfgPath string) error
 }
 
 // Metadata about a commit.

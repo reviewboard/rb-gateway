@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -18,6 +19,7 @@ func CreateTestConfig(t *testing.T, repos ...repositories.Repository) config.Con
 	cfg := config.Config{
 		Port:           8888,
 		Repositories:   make(map[string]repositories.Repository),
+		RepositoryData: make([]config.RawRepository, 0, len(repos)),
 		TokenStorePath: ":memory:",
 	}
 
@@ -32,6 +34,25 @@ func CreateTestConfig(t *testing.T, repos ...repositories.Repository) config.Con
 	}
 
 	return cfg
+}
+
+func WriteConfig(t *testing.T, path string, cfg *config.Config) {
+	t.Helper()
+	assert := assert.New(t)
+
+	for _, repository := range cfg.Repositories {
+		cfg.RepositoryData = append(cfg.RepositoryData, config.RawRepository{
+			Name: repository.GetName(),
+			Path: repository.GetPath(),
+			Scm:  repository.GetScm(),
+		})
+	}
+
+	data, err := json.Marshal(cfg)
+	assert.Nil(err)
+
+	err = ioutil.WriteFile(path, data, 0600)
+	assert.Nil(err)
 }
 
 // Create an htpasswd file and store its path in the given Config instance.

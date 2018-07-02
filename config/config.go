@@ -17,23 +17,23 @@ const (
 	defaultPort uint16 = 8888
 )
 
-type repositoryData struct {
+type RawRepository struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Scm  string `json:"scm"`
 }
 
 type Config struct {
-	HtpasswdPath     string           `json:"htpasswdPath"`
-	Port             uint16           `json:"port"`
-	RepositoryData   []repositoryData `json:"repositories"`
-	SSLCertificate   string           `json:"sslCertificate"`
-	SSLKey           string           `json:"sslKey"`
-	TokenStorePath   string           `json:"tokenStorePath"`
-	UseTLS           bool             `json:"useTLS"`
-	WebhookStorePath string           `json:"webhookStorePath"`
+	HtpasswdPath     string          `json:"htpasswdPath"`
+	Port             uint16          `json:"port"`
+	RepositoryData   []RawRepository `json:"repositories"`
+	SSLCertificate   string          `json:"sslCertificate"`
+	SSLKey           string          `json:"sslKey"`
+	TokenStorePath   string          `json:"tokenStorePath"`
+	UseTLS           bool            `json:"useTLS"`
+	WebhookStorePath string          `json:"webhookStorePath"`
 
-	Repositories map[string]repositories.Repository
+	Repositories map[string]repositories.Repository `json:"-"`
 }
 
 func Load(path string) (*Config, error) {

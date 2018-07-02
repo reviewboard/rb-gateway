@@ -36,7 +36,10 @@ To start the server on localhost:8888:
 Testing
 -------
 
-Run `go test ./...` to run tests for rb-gateway and all sub-packages.
+Run `make test` to run tests for rb-gateway and all sub-packages.
+
+Run `make integration-tests` to run integration tests, which require more
+infrastructure than just `go test ./...` can provide.
 
 
 License

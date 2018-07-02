@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/src-d/go-git.v4"
@@ -542,4 +544,49 @@ outer:
 	}
 
 	return &best, nil
+}
+
+// Return the equivalent of `git rev-parse --git-common-dir`
+func (repo *GitRepository) commonDir() (dir string, err error) {
+	dotGitPath := filepath.Join(repo.Path, git.GitDirName)
+
+	var rawRepo *git.Repository
+	if rawRepo, err = git.PlainOpen(repo.Path); err != nil {
+		return
+	}
+
+	parent := repo.Path
+	var stat os.FileInfo
+	if stat, err = os.Stat(dotGitPath); os.IsNotExist(err) {
+		// A .git directory doesn't exist. Are we in a bare repository?
+		var worktree *git.Worktree
+		if worktree, err = rawRepo.Worktree(); err == git.ErrIsBareRepository {
+			err = nil
+			dir = parent
+			return
+		} else {
+			if stat, err = worktree.Filesystem.Stat(git.GitDirName); err != nil {
+				return
+			}
+
+			parent = worktree.Filesystem.Root()
+		}
+	} else if err != nil {
+		return
+	}
+
+	// .git will either be a directory ...
+	if stat.IsDir() {
+		dir = filepath.Join(parent, stat.Name())
+		return
+	}
+
+	// or a file with `gitdir: {path}` in the case of a worktree.
+	var rawContent []byte
+	if rawContent, err = ioutil.ReadFile(filepath.Join(parent, stat.Name())); err != nil {
+		return
+	}
+
+	dir = strings.TrimSpace(strings.TrimPrefix(string(rawContent), "gitdir: "))
+	return
 }
