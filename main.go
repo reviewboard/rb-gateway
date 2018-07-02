@@ -11,10 +11,27 @@ import (
 
 var (
 	app        = kingpin.New("rb-gateway", "Repository API server.")
-	configPath = app.Flag("config", "Path to configuration file.").Default(config.DefaultConfigPath).String()
+	configPath = app.Flag("config", "Path to configuration file.").
+			Default(config.DefaultConfigPath).
+			String()
+
+	serve = app.Command("serve", "Start the API server.").Default()
+
+	webhook  = app.Command("trigger-webhooks", "Trigger matching webhooks.")
+	repoName = webhook.Arg("repository", "The name of the repository to trigger the webhook for.").
+			Required().
+			String()
+	event = webhook.Arg("event", "The name of the event.").
+		Required().
+		String()
 )
 
 func main() {
-	kingpin.MustParse(app.Parse(os.Args[1:]))
-	commands.Serve(*configPath)
+	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+	case serve.FullCommand():
+		commands.Serve(*configPath)
+
+	case webhook.FullCommand():
+		commands.TriggerWebhooks(*configPath, *repoName, *event)
+	}
 }

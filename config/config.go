@@ -24,13 +24,14 @@ type repositoryData struct {
 }
 
 type Config struct {
-	HtpasswdPath   string           `json:"htpasswdPath"`
-	Port           uint16           `json:"port"`
-	RepositoryData []repositoryData `json:"repositories"`
-	SSLCertificate string           `json:"sslCertificate"`
-	SSLKey         string           `json:"sslKey"`
-	TokenStorePath string           `json:"tokenStorePath"`
-	UseTLS         bool             `json:"useTLS"`
+	HtpasswdPath     string           `json:"htpasswdPath"`
+	Port             uint16           `json:"port"`
+	RepositoryData   []repositoryData `json:"repositories"`
+	SSLCertificate   string           `json:"sslCertificate"`
+	SSLKey           string           `json:"sslKey"`
+	TokenStorePath   string           `json:"tokenStorePath"`
+	UseTLS           bool             `json:"useTLS"`
+	WebhookStorePath string           `json:"webhookStorePath"`
 
 	Repositories map[string]repositories.Repository
 }
@@ -117,6 +118,7 @@ func validate(cfgDir string, config *Config) (err error) {
 	}{
 		{&config.TokenStorePath, "tokenStorePath", "tokens.dat"},
 		{&config.HtpasswdPath, "htpasswdPath", "htpasswd"},
+		{&config.WebhookStorePath, "webhookStorePath", "webhooks.json"},
 	}
 
 	for _, fieldInfo := range optionalPathFields {
@@ -131,6 +133,7 @@ func validate(cfgDir string, config *Config) (err error) {
 	}
 
 	config.HtpasswdPath = resolvePath(cfgDir, config.HtpasswdPath)
+	config.WebhookStorePath = resolvePath(cfgDir, config.WebhookStorePath)
 
 	if len(missingFields) != 0 {
 		err = fmt.Errorf("Some required fields were missing from the configuration: %s.", strings.Join(missingFields, ","))
