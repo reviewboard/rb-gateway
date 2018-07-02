@@ -22,16 +22,16 @@ const (
 
 type API struct {
 	configLock    sync.RWMutex
-	config        config.Config
+	config        *config.Config
 	router        *mux.Router
 	tokenStore    tokens.TokenStore
 	authenticator *auth.BasicAuth
 }
 
 // Return a new router for the API.
-func New(cfg config.Config) (*API, error) {
+func New(cfg *config.Config) (*API, error) {
 	api := API{
-		config:        config.Config{},
+		config:        &config.Config{},
 		router:        mux.NewRouter(),
 		authenticator: auth.NewBasicAuthenticator("RB Gateway", nil),
 	}
@@ -78,7 +78,7 @@ func New(cfg config.Config) (*API, error) {
 // If there is an error setting the configuration (e.g., from attempting to
 // load a new token store), that error will be returned and the configuration
 // will not bet set.
-func (api *API) SetConfig(newConfig config.Config) error {
+func (api *API) SetConfig(newConfig *config.Config) error {
 	api.configLock.Lock()
 	defer api.configLock.Unlock()
 
@@ -95,7 +95,7 @@ func (api *API) SetConfig(newConfig config.Config) error {
 // and in New (because the API object is still internal at that point). It is
 // used in the latter case to avoid the overhead of unnecessary
 // locking/unlocking.
-func (api *API) setConfigUnsafe(newConfig config.Config) error {
+func (api *API) setConfigUnsafe(newConfig *config.Config) error {
 	tokenStore, err := tokens.NewStore(newConfig.TokenStorePath)
 	if err != nil {
 		return err

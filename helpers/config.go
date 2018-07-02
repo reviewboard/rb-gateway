@@ -67,14 +67,18 @@ func CreateTestHtpasswd(t *testing.T, username, password string, cfg *config.Con
 }
 
 // Cleanup any and all temp files specified in the configuration.
-func CleanupConfig(t *testing.T, cfg config.Config) {
+func CleanupConfig(t *testing.T, cfg *config.Config) {
 	t.Helper()
 	assert := assert.New(t)
-	// We use defer here so that if deleting cfg.TokenStorePath fails we can
-	// still attempt to delete cfg.HtpasswdPath
+
 	if cfg.TokenStorePath != "" && cfg.TokenStorePath != ":memory:" {
 		err := os.Remove(cfg.TokenStorePath)
-		defer assert.Nil(err)
+		assert.Nil(err)
+	}
+
+	if cfg.WebhookStorePath != "" {
+		err := os.Remove(cfg.WebhookStorePath)
+		assert.Nil(err)
 	}
 
 	if cfg.HtpasswdPath != "" {

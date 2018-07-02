@@ -27,7 +27,7 @@ func Serve(configPath string) {
 		log.Fatal("Cannot use memory store outside of tests.")
 	}
 
-	api, err := api.New(*cfg)
+	api, err := api.New(cfg)
 	if err != nil {
 		log.Fatalf("Could not create API: %s", err.Error())
 	}
@@ -90,7 +90,7 @@ func Serve(configPath string) {
 			if newCfg.TokenStorePath == ":memory:" {
 				log.Println("Failed to reload configuration: cannot use memory store outside of tests.")
 				log.Println("Configuration was not reloaded.")
-			} else if err = api.SetConfig(*newCfg); err != nil {
+			} else if err = api.SetConfig(newCfg); err != nil {
 				log.Printf("Failed to reload configuration: %s\n", err.Error())
 			} else {
 				log.Println("Configuration reloaded.")
