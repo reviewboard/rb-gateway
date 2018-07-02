@@ -5,15 +5,24 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	hg "bitbucket.org/gohg/gohg"
+	"github.com/go-ini/ini"
+	"github.com/kballard/go-shellquote"
 
 	"github.com/reviewboard/rb-gateway/repositories/events"
 )
 
 const (
 	hgBin = "hg"
+)
+
+var (
+	hgEvents = map[string]string{
+		events.PushEvent: "changegroup",
+	}
 )
 
 // A Mercurial repository.
@@ -318,10 +327,6 @@ func (repo *HgRepository) Log(client *hg.HgClient, fields, revisions []string, a
 	return records, nil
 }
 
-func (repo *HgRepository) InstallHooks(cfgPath string) error {
-	panic("unimplemented")
-}
-
 func (repo *HgRepository) ParseEventPayload(event string, input io.Reader) (events.Payload, error) {
 	if !events.IsValidEvent(event) {
 		return nil, events.InvalidEventErr
@@ -396,6 +401,48 @@ func (repo *HgRepository) parsePushEvent(first_node, last_node string) (events.P
 	return payload, nil
 }
 
+func (repo *HgRepository) InstallHooks(cfgPath string) error {
+	client, err := repo.Client()
+	if err != nil {
+		return err
+	}
+	defer client.Disconnect()
+
+	root := client.RepoRoot()
+	hgrcPath := filepath.Join(root, ".hg", "hgrc")
+
+	hgrc, err := ini.Load(hgrcPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			hgrc = ini.Empty()
+		} else {
+			return err
+		}
+	}
+
+	exePath, err := getExePath()
+	if err != nil {
+		return err
+	}
+
+	hookSection := hgrc.Section("hooks")
+
+	for event, hook := range hgEvents {
+		key := fmt.Sprintf("%s.rbgateway", hook)
+		if !hookSection.HasKey(key) {
+			hookSection.Key(key).SetValue(shellquote.Join(
+				exePath,
+				"--config",
+				cfgPath,
+				"trigger-webhooks",
+				repo.Name,
+				event,
+			))
+		}
+	}
+
+	return hgrc.SaveTo(hgrcPath)
+}
 func isNotExist(err error) bool {
 	return strings.Index(err.Error(), ": no such file in rev ") != -1
 }

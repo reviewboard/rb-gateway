@@ -2,8 +2,11 @@ package repositories_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/go-ini/ini"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/reviewboard/rb-gateway/helpers"
@@ -262,4 +265,44 @@ func TestParsePushEvent(t *testing.T) {
 	}
 
 	assert.Equal(expected, payload)
+}
+
+func TestInstallHgHooks(t *testing.T) {
+	assert := assert.New(t)
+
+	repo, client := helpers.CreateHgRepo(t, "hg-repo")
+	defer helpers.CleanupHgRepo(t, client)
+
+	repo.InstallHooks("/tmp/config.json")
+
+	hgrc, err := ini.Load(filepath.Join(repo.Path, ".hg", "hgrc"))
+	assert.Nil(err)
+
+	exePath, err := filepath.Abs(os.Args[0])
+	assert.Nil(err)
+
+	assert.Equal(
+		fmt.Sprintf("%s --config /tmp/config.json trigger-webhooks hg-repo push", exePath),
+		hgrc.Section("hooks").Key("changegroup.rbgateway").String(),
+	)
+}
+
+func TestInstallHgHooksQuoted(t *testing.T) {
+	assert := assert.New(t)
+
+	repo, client := helpers.CreateHgRepo(t, "hg-repo with a space")
+	defer helpers.CleanupHgRepo(t, client)
+
+	repo.InstallHooks("/tmp/config with a space.json")
+
+	hgrc, err := ini.Load(filepath.Join(repo.Path, ".hg", "hgrc"))
+	assert.Nil(err)
+
+	exePath, err := filepath.Abs(os.Args[0])
+	assert.Nil(err)
+
+	assert.Equal(
+		fmt.Sprintf("%s --config '/tmp/config with a space.json' trigger-webhooks 'hg-repo with a space' push", exePath),
+		hgrc.Section("hooks").Key("changegroup.rbgateway").String(),
+	)
 }

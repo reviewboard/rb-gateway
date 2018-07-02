@@ -17,3 +17,7 @@ integration-tests:
 	go build -o $(TMPDIR)/rb-gateway
 	-env RBGATEWAY_PATH=$(TMPDIR)/rb-gateway go test ./integration_tests
 	rm -rf $(TMPDIR)
+
+.PHONY: format
+format:
+	go fmt ./...

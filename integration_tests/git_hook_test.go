@@ -9,17 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/foomo/htpasswd"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/src-d/go-git.v4"
 	git_config "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
-	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/helpers"
 	"github.com/reviewboard/rb-gateway/repositories"
 	"github.com/reviewboard/rb-gateway/repositories/events"
-	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
 // Integration tests for Git hooks.
@@ -33,7 +30,7 @@ func TestIntegrtionForGitHooks(t *testing.T) {
 
 	server, requestsChan := helpers.CreateRequestRecorder(t)
 
-	upstream := setupBareRepo(t)
+	upstream := setupBareGitRepo(t)
 	defer helpers.CleanupRepository(t, upstream.Path)
 
 	cfgDir, cfg := setupConfig(t, upstream)
@@ -90,52 +87,30 @@ func TestIntegrtionForGitHooks(t *testing.T) {
 
 	requests := helpers.AssertNumRequests(t, 2, requestsChan)
 
-	testCases := []struct {
-		recorded *helpers.RecordedRequest
-		message  string
-		commitId string
-	}{
+	cases := []testCase{
 		{
 			recorded: &requests[0],
 			message:  "Initial commit",
 			commitId: origHead.String(),
+			target: events.PushPayloadCommitTarget{
+				Branch: "master",
+			},
 		},
 		{
 			recorded: &requests[1],
 			message:  "New commit",
 			commitId: newHead.String(),
+			target: events.PushPayloadCommitTarget{
+				Branch: "master",
+			},
 		},
 	}
 
-	for i, testCase := range testCases {
-		request := testCase.recorded.Request
-		body := testCase.recorded.Body
-
-		assert.Equalf("/test-hook", request.URL.Path, "URL for request %d does not match", i)
-		assert.Equalf(events.PushEvent, request.Header.Get("X-RBG-Event"), "X-RBG-Event header for request %d does not match", i)
-		assert.Equalf(hook.SignPayload(body), request.Header.Get("X-RBG-Signature"), "Signature for request %d does not match", i)
-		payload := events.PushPayload{
-			Repository: "bare-repo",
-			Commits: []events.PushPayloadCommit{
-				{
-					Id:      testCase.commitId,
-					Message: testCase.message,
-					Target: events.PushPayloadCommitTarget{
-						Branch: "master",
-					},
-				},
-			},
-		}
-
-		rawJson, err := events.MarshalPayload(payload)
-		assert.Nil(err)
-
-		assert.Equalf(string(rawJson), string(body), "Body for request %d does not match", i)
-	}
+	runTests(t, cases, upstream, hook)
 }
 
 // Create a bare repository that we can push to.
-func setupBareRepo(t *testing.T) *repositories.GitRepository {
+func setupBareGitRepo(t *testing.T) *repositories.GitRepository {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -147,64 +122,8 @@ func setupBareRepo(t *testing.T) *repositories.GitRepository {
 
 	return &repositories.GitRepository{
 		RepositoryInfo: repositories.RepositoryInfo{
-			Name: "bare-repo",
+			Name: "upstream",
 			Path: repoDir,
 		},
 	}
-}
-
-// Set up the configuration and write it to disk.
-func setupConfig(t *testing.T, upstream *repositories.GitRepository) (string, config.Config) {
-	t.Helper()
-	assert := assert.New(t)
-
-	cfgDir, err := ioutil.TempDir("", "rb-gateway-config-")
-	assert.Nil(err)
-	cfg := helpers.CreateTestConfig(t, upstream)
-
-	hookStorePath := filepath.Join(cfgDir, "webhooks.json")
-	cfg.WebhookStorePath = hookStorePath
-	cfg.TokenStorePath = filepath.Join(cfgDir, "tokens.dat")
-	cfg.HtpasswdPath = filepath.Join(cfgDir, "htpasswd")
-
-	assert.Nil(htpasswd.SetPassword(cfg.HtpasswdPath, "username", "password", htpasswd.HashBCrypt))
-
-	helpers.WriteConfig(t, filepath.Join(cfgDir, "config.json"), &cfg)
-
-	return cfgDir, cfg
-}
-
-// Set up the webhook store and write it to disk.
-func setupStore(t *testing.T, serverUrl string, cfg *config.Config) *hooks.Webhook {
-	assert := assert.New(t)
-	t.Helper()
-
-	var repoName string
-	for repoName, _ = range cfg.Repositories {
-		break
-	}
-
-	assert.NotEqual(0, len(repoName))
-	hook := &hooks.Webhook{
-		Id:      "test-hook",
-		Enabled: true,
-		Url:     fmt.Sprintf("%s/test-hook", serverUrl),
-		Secret:  "top-secret-123",
-		Events:  []string{events.PushEvent},
-		Repos:   []string{repoName},
-	}
-
-	store := hooks.WebhookStore{
-		hook.Id: hook,
-	}
-
-	f, err := os.OpenFile(cfg.WebhookStorePath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
-	assert.Nil(err)
-
-	defer f.Close()
-
-	err = store.Save(f)
-	assert.Nil(err)
-
-	return hook
 }
