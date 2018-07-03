@@ -1,6 +1,8 @@
+_build/
 vendor/
 
 *.swp
+*.pyc
 
 config.json
 htpasswd

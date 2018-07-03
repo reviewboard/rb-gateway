@@ -1,0 +1,33 @@
+============================
+RB Gateway 1.0 Release Notes
+============================
+
+**Release date**: TBD
+
+
+Introducing RB Gateway
+======================
+
+RB Gateway, the Review Board Gateway microservice, was built to help manage
+and host Git and Mercurial repositories within your network in a way that
+allows services like `Review Board`_ to better integrate with them, access
+their contents remotely, and to be notified when changes occur within the
+repository.
+
+RB Gateway can be installed on Linux, macOS, or Windows. See the
+:ref:`installation instructions <rb-gateway-installation>` to get started.
+
+
+.. _Review Board: https://www.reviewboard.org/
+
+
+Contributors
+============
+
+* Barret Rennie
+* Claudia Chen
+* David Trowbridge
+* Florie Cai
+* Henri-Philippe Marceau
+* Jessica Yuen
+* Krzysztof Śmigiel
