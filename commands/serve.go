@@ -19,8 +19,9 @@ func Serve(configPath string) {
 		installHooks(cfg, configPath, false)
 		break
 
-	case err := <-configWatcher.Errors:
-		log.Fatal("Could not watch configuration file: ", err)
+	case <-configWatcher.Errors:
+		log.Fatalf("Unable to load configuration file %s. See installation instructions at http://www.reviewboard.org/docs/rbgateway/latest/installation/",
+			configPath)
 	}
 
 	if cfg.TokenStorePath == ":memory:" {
