@@ -3,7 +3,6 @@ package integration_tests
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -62,13 +61,7 @@ func setupStore(t *testing.T, serverUrl string, cfg *config.Config) *hooks.Webho
 		hook.Id: hook,
 	}
 
-	f, err := os.OpenFile(cfg.WebhookStorePath, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
-	assert.Nil(err)
-
-	defer f.Close()
-
-	err = store.Save(f)
-	assert.Nil(err)
+    assert.Nil(store.Save(cfg.WebhookStorePath))
 
 	return hook
 }

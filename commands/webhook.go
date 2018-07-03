@@ -29,17 +29,7 @@ func TriggerWebhooks(configPath, repoName, event string) {
 		log.Fatalf(`Unknown event: "%s"`, event)
 	}
 
-	f, err := os.Open(cfg.WebhookStorePath)
-	if err != nil {
-		log.Fatal("Could not open webhook store: ", err.Error())
-	}
-
-	validRepos := make(map[string]struct{})
-	for repoName, _ := range cfg.Repositories {
-		validRepos[repoName] = struct{}{}
-	}
-	store, err := hooks.LoadStore(f, validRepos)
-	f.Close()
+	store, err := hooks.LoadStore(cfg.WebhookStorePath, cfg.RepositorySet())
 
 	if err != nil {
 		log.Fatal("Could not load webhook store: ", err.Error())

@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"sort"
 
 	"github.com/reviewboard/rb-gateway/repositories/events"
@@ -25,7 +26,20 @@ type WebhookStore map[string]*Webhook
 //
 // As a side effect, the `Events` and `Repos` fields of each hook will be
 // sorted.
-func LoadStore(r io.Reader, repositories map[string]struct{}) (WebhookStore, error) {
+func LoadStore(path string, repositories map[string]struct{}) (WebhookStore, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	return ReadStore(f, repositories)
+}
+
+// Read a collection of webhooks from the given reader.
+//
+// Callers should prefer the higher-level `LoadStore` over this function.
+func ReadStore(r io.Reader, repositories map[string]struct{}) (WebhookStore, error) {
 	content, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -47,10 +61,33 @@ func LoadStore(r io.Reader, repositories map[string]struct{}) (WebhookStore, err
 	return store, nil
 }
 
-// Save the store to a writer.
+// Save the WebhookStore.
+//
+// The store will first be written to a temporary file and will then be moved
+// to the target location. This is done to avoid `rb-gateway trigger-webhooks`
+// processess from reading the file as we are writing to it, causing errors.
+func (s WebhookStore) Save(path string) error {
+	tmpfile, err := ioutil.TempFile("", "tmp-store")
+	if err != nil {
+		return err
+	}
+
+	err = s.Write(tmpfile)
+	tmpfile.Close()
+
+	if err != nil {
+		return err
+	}
+
+	return os.Rename(tmpfile.Name(), path)
+}
+
+// Write the store to a writer.
 //
 // The store will be marshalled as JSON.
-func (s WebhookStore) Save(w io.Writer) error {
+//
+// Callers should prefer the higher-level `WebhookStore.Save` over this function.
+func (s WebhookStore) Write(w io.Writer) error {
 	rawStore := make([]Webhook, 0, len(s))
 
 	for _, hook := range s {
@@ -101,6 +138,12 @@ func validateHook(hook *Webhook, repos map[string]struct{}) bool {
 	} else if len(validRepos) == 0 {
 		log.Printf(`Hook "%s" has no valid repositories; skipping hook.`, hook.Id)
 		return false
+	}
+
+	if len(hook.Secret) < 20 {
+		log.Printf(
+			`WARNING: Secret for webhook "%s" is too short (%d bytes); should be at least 20 bytes.`,
+			hook.Id, len(hook.Secret))
 	}
 
 	sort.Strings(validEvents)

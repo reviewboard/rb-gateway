@@ -85,6 +85,17 @@ func Load(path string) (*Config, error) {
 	return &config, nil
 }
 
+// Return the set of repository names.
+//
+// See `hooks.LoadStore()`.
+func (cfg *Config) RepositorySet() (repos map[string]struct{}) {
+	repos = make(map[string]struct{})
+	for name := range cfg.Repositories {
+		repos[name] = struct{}{}
+	}
+	return
+}
+
 func validate(cfgDir string, config *Config) (err error) {
 	missingFields := []string{}
 

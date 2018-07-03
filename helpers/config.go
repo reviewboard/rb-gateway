@@ -11,6 +11,7 @@ import (
 
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/repositories"
+	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
 func CreateTestConfig(t *testing.T, repos ...repositories.Repository) config.Config {
@@ -64,6 +65,20 @@ func CreateTestHtpasswd(t *testing.T, username, password string, cfg *config.Con
 
 	err = htpasswd.SetPassword(cfg.HtpasswdPath, username, password, htpasswd.HashBCrypt)
 	assert.Nil(err)
+}
+
+// Write the given webhook store and save the path in the given config.
+func WriteTestWebhookStore(t *testing.T, store hooks.WebhookStore, cfg *config.Config) {
+	t.Helper()
+	assert := assert.New(t)
+
+	tmpfile, err := ioutil.TempFile("", "rbgateway-webhooks-")
+	assert.Nil(err)
+
+	cfg.WebhookStorePath = tmpfile.Name()
+
+	assert.Nil(store.Write(tmpfile))
+	assert.Nil(tmpfile.Close())
 }
 
 // Cleanup any and all temp files specified in the configuration.

@@ -14,17 +14,47 @@ import (
 	"github.com/reviewboard/rb-gateway/api/tokens"
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/repositories"
+	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
 const (
 	PrivateTokenHeader = "PRIVATE-TOKEN"
 )
 
+type routingEntry struct {
+	methods []string
+	path    string
+	handler http.Handler
+}
+
+func addRoutes(router *mux.Router, routes []routingEntry) {
+	for _, route := range routes {
+		router.Path(route.path).
+			Methods(route.methods...).
+			Handler(route.handler)
+	}
+}
+
 type API struct {
-	configLock    sync.RWMutex
-	config        *config.Config
-	router        *mux.Router
-	tokenStore    tokens.TokenStore
+	// A lock for reading/writing `config`.
+	configLock sync.RWMutex
+
+	// The server configuration.
+	config *config.Config
+
+	// The server router.
+	router *mux.Router
+
+	// A lock for reading from/writing to the hook store.
+	hookStoreLock sync.RWMutex
+
+	// The webhook store.
+	hookStore hooks.WebhookStore
+
+	// The token store.
+	tokenStore tokens.TokenStore
+
+	// The authenticator for requesting tokens.
 	authenticator *auth.BasicAuth
 }
 
@@ -45,15 +75,11 @@ func New(cfg *config.Config) (*API, error) {
 		HandlerFunc(api.authenticator.Wrap(api.getSession))
 
 	// The following routes all require token authorization.
-	repoRoutes := api.router.PathPrefix("/repos/{repo}").Subrouter()
-	repoRoutes.Use(api.withAuthorizationRequired)
-	repoRoutes.Use(api.withRepository)
+	repoRouter := api.router.PathPrefix("/repos/{repo}").Subrouter()
+	repoRouter.Use(api.withAuthorizationRequired)
+	repoRouter.Use(api.withRepository)
 
-	routeTable := []struct {
-		methods []string
-		path    string
-		handler http.Handler
-	}{
+	addRoutes(repoRouter, []routingEntry{
 		{[]string{"GET"}, "/branches", http.HandlerFunc(api.getBranches)},
 		{[]string{"GET"}, "/branches/{branch}/commits", http.HandlerFunc(api.getCommits)},
 		{[]string{"GET"}, "/commits/{commit-id}", http.HandlerFunc(api.getCommit)},
@@ -62,13 +88,18 @@ func New(cfg *config.Config) (*API, error) {
 		{[]string{"GET"}, "/file/{file-id}", http.HandlerFunc(api.getFile)},
 		{[]string{"HEAD"}, "/file/{file-id}", http.HandlerFunc(api.getFileExists)},
 		{[]string{"GET"}, "/path", http.HandlerFunc(api.getPath)},
-	}
+	})
 
-	for _, route := range routeTable {
-		repoRoutes.Path(route.path).
-			Methods(route.methods...).
-			Handler(route.handler)
-	}
+	hookRouter := api.router.PathPrefix("/webhooks").Subrouter()
+	hookRouter.Use(api.withAuthorizationRequired)
+
+	addRoutes(hookRouter, []routingEntry{
+		{[]string{"GET"}, "", http.HandlerFunc(api.getHooks)},
+		{[]string{"POST"}, "", http.HandlerFunc(api.createHook)},
+		{[]string{"GET"}, "/{hook-id}", http.HandlerFunc(api.getHook)},
+		{[]string{"DELETE"}, "/{hook-id}", http.HandlerFunc(api.deleteHook)},
+		{[]string{"PATCH"}, "/{hook-id}", http.HandlerFunc(api.updateHook)},
+	})
 
 	return &api, nil
 }
@@ -106,9 +137,15 @@ func (api *API) setConfigUnsafe(newConfig *config.Config) error {
 		return err
 	}
 
+	hookStore, err := hooks.LoadStore(newConfig.WebhookStorePath, newConfig.RepositorySet())
+	if err != nil {
+		return err
+	}
+
 	api.tokenStore = tokenStore
 	api.authenticator.Secrets = provider
 	api.config = newConfig
+	api.hookStore = hookStore
 	return nil
 }
 
@@ -122,8 +159,8 @@ func (api *API) Shutdown(server *http.Server) error {
 	cancel()
 
 	/*
-	 * We have to acquire the lock here because the goroutine returned by
-	 * api.Serve() acquires the read portion of the lock.
+	 * We have to acquire the lock here because the goroutine in api.Serve()
+	 * acquires the read portion of the lock.
 	 */
 	api.configLock.Lock()
 	defer api.configLock.Unlock()
@@ -178,7 +215,6 @@ func (api *API) withRepository(next http.Handler) http.Handler {
 	})
 }
 
-// TODO: Replace this with actual token logic.
 func (api *API) withAuthorizationRequired(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if api.tokenStore.Get(r) == nil {

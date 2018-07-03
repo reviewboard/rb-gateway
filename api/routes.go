@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/reviewboard/rb-gateway/repositories"
+	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
 // Return a session given basic auth credentials.
@@ -224,4 +226,208 @@ func (_ *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/path`
 func (_ *API) getPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func (api *API) getHooks(w http.ResponseWriter, r *http.Request) {
+	api.hookStoreLock.RLock()
+	defer api.hookStoreLock.RUnlock()
+
+	buffer := bytes.NewBufferString(`{"webhooks":[`)
+	first := true
+
+	for _, hook := range api.hookStore {
+		if first {
+			first = false
+		} else {
+			buffer.WriteString(",")
+		}
+
+		b, err := json.Marshal(hook)
+		if err != nil {
+			log.Printf("Could not serialize hooks: %s", err.Error())
+			http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
+			return
+		}
+
+		buffer.Write(b)
+	}
+
+	buffer.WriteString("]}")
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(buffer.Bytes())
+
+}
+
+func (api *API) createHook(w http.ResponseWriter, r *http.Request) {
+	api.hookStoreLock.Lock()
+	defer api.hookStoreLock.Unlock()
+
+	var hook hooks.Webhook
+
+	if err := json.NewDecoder(r.Body).Decode(&hook); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Could not parse request body: %s", err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	if api.hookStore[hook.Id] != nil {
+		http.Error(w,
+			fmt.Sprintf(`A webhook with ID "%s" already exists.`, hook.Id),
+			http.StatusBadRequest)
+		return
+	}
+
+	if err := hook.Validate(api.config.RepositorySet()); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	api.hookStore[hook.Id] = &hook
+	if err := api.hookStore.Save(api.config.WebhookStorePath); err != nil {
+		// If we cannot save the store, revert our state so that we stay
+		// consistent with it.
+		log.Println("Could not save webhook store: ", err.Error())
+		delete(api.hookStore, hook.Id)
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
+}
+
+func (api *API) getHook(w http.ResponseWriter, r *http.Request) {
+	api.hookStoreLock.RLock()
+	defer api.hookStoreLock.RUnlock()
+
+	hookId := mux.Vars(r)["hook-id"]
+
+	var hook *hooks.Webhook
+	if hook = api.hookStore[hookId]; hook == nil {
+		http.Error(w, "No such webhook", http.StatusNotFound)
+		return
+	}
+
+	b, err := json.Marshal(hook)
+	if err != nil {
+		log.Printf("Could not serialize hooks: %s", err.Error())
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (api *API) deleteHook(w http.ResponseWriter, r *http.Request) {
+	api.hookStoreLock.Lock()
+	defer api.hookStoreLock.Unlock()
+
+	hookId := mux.Vars(r)["hook-id"]
+
+	var hook *hooks.Webhook
+	if hook = api.hookStore[hookId]; hook == nil {
+		http.Error(w, "No such webhook", http.StatusNotFound)
+	}
+
+	delete(api.hookStore, hookId)
+	if err := api.hookStore.Save(api.config.WebhookStorePath); err != nil {
+		// If we cannot save the store, revert our state so that we stay
+		// consistent with it.
+		log.Println("Could not save webhook store: ", err.Error())
+		api.hookStore[hookId] = hook
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (api *API) updateHook(w http.ResponseWriter, r *http.Request) {
+	api.hookStoreLock.Lock()
+	defer api.hookStoreLock.Unlock()
+
+	hookId := mux.Vars(r)["hook-id"]
+
+	var hook *hooks.Webhook
+	var exists bool
+	if hook, exists = api.hookStore[hookId]; !exists {
+		http.Error(w, "No such webhook", http.StatusNotFound)
+		return
+	}
+
+	var parsedRequest struct {
+		Id      *string  `json:"id"`
+		Url     *string  `json:"url",omitempty`
+		Secret  *string  `json:"secret",omitempty`
+		Enabled *bool    `json:"enabled"`
+		Events  []string `json:"events"`
+		Repos   []string `json:"repos"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&parsedRequest); err != nil {
+		http.Error(w,
+			fmt.Sprintf("Could not parse request body: %s", err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	updatedHook := hooks.Webhook{
+		Id:      hook.Id,
+		Url:     hook.Url,
+		Secret:  hook.Secret,
+		Enabled: hook.Enabled,
+		Events:  hook.Events[:],
+		Repos:   hook.Repos[:],
+	}
+
+	if parsedRequest.Id != nil {
+		http.Error(w, "Hook ID cannot be updated.", http.StatusBadRequest)
+		return
+	}
+
+	if parsedRequest.Url != nil {
+		updatedHook.Url = *parsedRequest.Url
+	}
+
+	if parsedRequest.Secret != nil {
+		updatedHook.Secret = *parsedRequest.Secret
+	}
+
+	if parsedRequest.Enabled != nil {
+		updatedHook.Enabled = *parsedRequest.Enabled
+	}
+
+	if parsedRequest.Events != nil {
+		updatedHook.Events = parsedRequest.Events
+	}
+
+	if parsedRequest.Repos != nil {
+		updatedHook.Repos = parsedRequest.Repos
+	}
+
+	if err := updatedHook.Validate(api.config.RepositorySet()); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	api.hookStore[hook.Id] = &updatedHook
+	if err := api.hookStore.Save(api.config.WebhookStorePath); err != nil {
+		// If we cannot save the store, revert our state so that we stay
+		// consistent with it.
+		api.hookStore[hook.Id] = hook
+		log.Println("Could not update hook store: ", err.Error())
+		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
+	} else {
+		var b []byte
+		if b, err = json.MarshalIndent(updatedHook, "", "  "); err != nil {
+			http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(b)
+	}
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
-func TestLoadStore(t *testing.T) {
+func TestReadStore(t *testing.T) {
 	assert := assert.New(t)
 
 	reader := strings.NewReader(`[
@@ -44,7 +44,7 @@ func TestLoadStore(t *testing.T) {
 		"repo-2": struct{}{},
 	}
 
-	store, err := hooks.LoadStore(reader, repos)
+	store, err := hooks.ReadStore(reader, repos)
 	assert.Nil(err)
 	assert.NotNil(store)
 
@@ -82,11 +82,11 @@ func TestLoadStore(t *testing.T) {
 	}
 
 	var buf strings.Builder
-	assert.Nil(store.Save(&buf))
+	assert.Nil(store.Write(&buf))
 
 	reader = strings.NewReader(buf.String())
 
-	store, err = hooks.LoadStore(reader, repos)
+	store, err = hooks.ReadStore(reader, repos)
 	assert.Nil(err)
 	assert.NotNil(store)
 
