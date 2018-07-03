@@ -13,5 +13,5 @@ a service with a smaller footprint that can provide the same functionality.
 .. toctree::
    :maxdepth: 2
 
-   rb-gateway/installation/index
-   rb-gateway/configuration/index
+   installation/index
+   configuration/index
