@@ -61,7 +61,7 @@ func setupStore(t *testing.T, serverUrl string, cfg *config.Config) *hooks.Webho
 		hook.Id: hook,
 	}
 
-    assert.Nil(store.Save(cfg.WebhookStorePath))
+	assert.Nil(store.Save(cfg.WebhookStorePath))
 
 	return hook
 }
