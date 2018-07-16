@@ -29,11 +29,23 @@ type WebhookStore map[string]*Webhook
 func LoadStore(path string, repositories map[string]struct{}) (WebhookStore, error) {
 	f, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return make(WebhookStore), nil
+		}
+
 		return nil, err
 	}
 	defer f.Close()
 
-	return ReadStore(f, repositories)
+	store, err := ReadStore(f, repositories)
+	if err != nil {
+		if err, ok := err.(*json.SyntaxError); ok && err.Offset == 0 && err.Error() == "unexpected end of JSON input" {
+			// The file is empty, so return an empty store.
+			return make(WebhookStore), nil
+		}
+	}
+
+	return store, err
 }
 
 // Read a collection of webhooks from the given reader.

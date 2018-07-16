@@ -1,6 +1,8 @@
 package hooks_test
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -104,4 +106,28 @@ func TestReadStore(t *testing.T) {
 		assert.Equal(hook.Repos, parsed.Repos)
 	}
 
+}
+
+func TestLoadStoreNotExists(t *testing.T) {
+	assert := assert.New(t)
+
+	tmpdir, err := ioutil.TempDir("", "rb-gateway-tmp-")
+	assert.Nil(err)
+
+	store, err := hooks.LoadStore(filepath.Join(tmpdir, "does-not-exist.json"), nil)
+	assert.Nil(err)
+	assert.Equal(hooks.WebhookStore{}, store)
+}
+
+func TestLoadStoreEmptyFile(t *testing.T) {
+	assert := assert.New(t)
+
+	tmpfile, err := ioutil.TempFile("", "rb-gateway-webhooks.json-")
+	assert.Nil(err)
+
+	defer tmpfile.Close()
+
+	store, err := hooks.LoadStore(tmpfile.Name(), nil)
+	assert.Nil(err)
+	assert.Equal(hooks.WebhookStore{}, store)
 }
