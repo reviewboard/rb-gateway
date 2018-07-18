@@ -92,3 +92,16 @@ func TestFileStoreLoadSave(t *testing.T) {
 		assert.True(store.Exists(tok))
 	}
 }
+
+func TestFileStoreExistsEmpty(t *testing.T) {
+	assert := assert.New(t)
+
+	tmpfile, err := ioutil.TempFile("", "rb-gateway-tokens.dat-")
+	assert.Nil(err)
+
+	defer tmpfile.Close()
+
+	store, err := tokens.NewStore(tmpfile.Name())
+	assert.Nil(err)
+	assert.NotNil(store)
+}

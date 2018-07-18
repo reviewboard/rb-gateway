@@ -41,12 +41,16 @@ func NewFileStore(path string) (*FileStore, error) {
 			if len(bytes) != 0 {
 				var unmarshalled []string
 
-				if err := json.Unmarshal(bytes, &unmarshalled); err != nil {
-					return nil, err
-				}
+				err := json.Unmarshal(bytes, &unmarshalled)
+				if err == nil {
 
-				for _, token := range unmarshalled {
-					tokens[token] = true
+					for _, token := range unmarshalled {
+						tokens[token] = true
+					}
+				} else if err, ok := err.(*json.SyntaxError); ok && err.Offset == 0 && err.Error() == "unexpected end of JSON input" {
+					// The file is empty, so we will just return an empty store.
+				} else {
+					return nil, err
 				}
 			}
 		}
