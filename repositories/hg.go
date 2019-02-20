@@ -175,6 +175,10 @@ func (repo *HgRepository) GetBranches() ([]Branch, error) {
 
 	for _, records := range [][]string{branchRecords, bookmarkRecords} {
 		for _, record := range records {
+			if (len(record) == 0) {
+				continue
+			}
+
 			fields := strings.Split(record, "\x1f")
 			branches = append(branches, Branch{
 				Name: fields[0],

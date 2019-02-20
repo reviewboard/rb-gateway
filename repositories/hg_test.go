@@ -117,6 +117,27 @@ func TestHgGetBranches(t *testing.T) {
 	}
 }
 
+func TestHgGetBranchesNoBookmarks(t *testing.T) {
+	assert := assert.New(t)
+
+	repo, client := helpers.CreateHgRepo(t, "hg-repo")
+	defer helpers.CleanupHgRepo(t, client)
+
+	helpers.SeedHgRepo(t, repo, client)
+
+	branches, err := repo.GetBranches()
+	assert.Nil(err)
+
+	assert.Equal(1, len(branches))
+	assert.Equal("default", branches[0].Name)
+
+	for i := 0; i < len(branches); i++ {
+		output, err := client.ExecCmd([]string{"log", "-r", branches[i].Name, "--template", "{node}"})
+		assert.Nil(err)
+		assert.Equal(string(output), branches[i].Id)
+	}
+}
+
 func TestHgGetCommits(t *testing.T) {
 	assert := assert.New(t)
 
