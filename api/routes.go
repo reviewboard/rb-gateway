@@ -359,8 +359,8 @@ func (api *API) updateHook(w http.ResponseWriter, r *http.Request) {
 
 	var parsedRequest struct {
 		Id      *string  `json:"id"`
-		Url     *string  `json:"url",omitempty`
-		Secret  *string  `json:"secret",omitempty`
+		Url     *string  `json:"url,omitempty"`
+		Secret  *string  `json:"secret,omitempty"`
 		Enabled *bool    `json:"enabled"`
 		Events  []string `json:"events"`
 		Repos   []string `json:"repos"`
