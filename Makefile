@@ -6,7 +6,7 @@ build: vendor
 	go build
 
 vendor:
-	dep ensure
+	go mod download
 
 test:
 	@$(eval PKGS := $(shell go list ./... | sed -E 's#github.com/reviewboard/rb-gateway#.#' | grep -v integration_tests))
