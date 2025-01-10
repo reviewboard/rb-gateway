@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-git/go-git/v5"
+	git_config "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/src-d/go-git.v4"
-	git_config "gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/reviewboard/rb-gateway/helpers"
 	"github.com/reviewboard/rb-gateway/repositories"

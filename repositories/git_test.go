@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/reviewboard/rb-gateway/helpers"
 	"github.com/reviewboard/rb-gateway/repositories/events"
@@ -187,6 +187,7 @@ func TestGitParsePushEvent(t *testing.T) {
 		assert.Nil(err)
 
 		commitId, err := worktree.Commit(fmt.Sprintf("Commit %d", i), &git.CommitOptions{
+			AllowEmptyCommits: true,
 			Author: &object.Signature{
 				Name:  "Author",
 				Email: "author@example.com",
@@ -248,6 +249,7 @@ func TestGitParsePushEventNewBranch(t *testing.T) {
 
 	for i := 1; i <= 2; i++ {
 		commitId, err := worktree.Commit(fmt.Sprintf("Commit %d", i), &git.CommitOptions{
+			AllowEmptyCommits: true,
 			Author: &object.Signature{
 				Name:  "Author",
 				Email: "author@example.com",
@@ -289,7 +291,7 @@ func TestGitParsePushEventNewBranch(t *testing.T) {
 
 // This test models a force push to a repository.
 //
-// It creates the following branch struture:
+// It creates the following branch structure:
 //
 // Before force push:
 // o -- A -- o -- B
@@ -314,6 +316,7 @@ func TestGitParsePushEventRebase(t *testing.T) {
 	var oldHead plumbing.Hash
 	for i := 0; i < 2; i++ {
 		oldHead, err = worktree.Commit(fmt.Sprintf("Commit %d", i+1), &git.CommitOptions{
+			AllowEmptyCommits: true,
 			Author: &object.Signature{
 				Name:  "Author",
 				Email: "author@example.com",
@@ -333,6 +336,7 @@ func TestGitParsePushEventRebase(t *testing.T) {
 	commitIds := make([]plumbing.Hash, 0, 2)
 	for i := 1; i <= 2; i++ {
 		commitId, err := worktree.Commit(fmt.Sprintf("New Commit %d", i), &git.CommitOptions{
+			AllowEmptyCommits: true,
 			Author: &object.Signature{
 				Name:  "Author",
 				Email: "author@example.com",
@@ -390,6 +394,7 @@ func TestGitParsePushEventMultiple(t *testing.T) {
 
 	for i := 1; i <= 2; i++ {
 		commitId, err := worktree.Commit(fmt.Sprintf("Commit %d", i), &git.CommitOptions{
+			AllowEmptyCommits: true,
 			Author: &object.Signature{
 				Name:  "Author",
 				Email: "author@example.com",
@@ -408,6 +413,7 @@ func TestGitParsePushEventMultiple(t *testing.T) {
 
 	for i := 3; i <= 4; i++ {
 		commitId, err := worktree.Commit(fmt.Sprintf("Commit %d", i), &git.CommitOptions{
+			AllowEmptyCommits: true,
 			Author: &object.Signature{
 				Name:  "Author",
 				Email: "author@example.com",
