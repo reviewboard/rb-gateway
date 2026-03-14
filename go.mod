@@ -1,8 +1,6 @@
 module github.com/reviewboard/rb-gateway
 
-go 1.21
-
-toolchain go1.23.4
+go 1.22
 
 require (
 	bitbucket.org/gohg/gohg v0.0.0-20140720204206-32d5a063a72b
