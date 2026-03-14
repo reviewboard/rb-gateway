@@ -53,33 +53,52 @@ func TestIntegrtionForGitHooks(t *testing.T) {
 	worktree, err := gitRepo.Worktree()
 	assert.Nil(err)
 
-	progressBuffer := new(bytes.Buffer)
-	pushOptions := &git.PushOptions{
-		RemoteName: "origin",
-		RefSpecs:   []git_config.RefSpec{"refs/heads/master:refs/heads/master"},
-		Progress:   progressBuffer,
-	}
-
-	origHead, err := worktree.Commit("Initial commit", &git.CommitOptions{
+	commitOpts := &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "Author",
 			Email: "author@example.com",
 			When:  time.Now(),
 		},
-	})
+	}
+
+	// Create a file so the commit is non-empty.
+	err = os.WriteFile(filepath.Join(repo.Path, "README"), []byte("test"), 0644)
+	assert.Nil(err)
+	_, err = worktree.Add("README")
+	assert.Nil(err)
+
+	origHead, err := worktree.Commit("Initial commit", commitOpts)
+	assert.Nil(err)
+
+	// Determine the branch name from HEAD (depends on git's
+	// init.defaultBranch config, e.g. "main" or "master").
+	headRef, err := gitRepo.Head()
+	assert.Nil(err)
+	branchName := headRef.Name().Short()
+
+	refSpec := git_config.RefSpec(
+		fmt.Sprintf("refs/heads/%s:refs/heads/%s", branchName, branchName),
+	)
+
+	progressBuffer := new(bytes.Buffer)
+	pushOptions := &git.PushOptions{
+		RemoteName: "origin",
+		RefSpecs:   []git_config.RefSpec{refSpec},
+		Progress:   progressBuffer,
+	}
 
 	assert.Nil(gitRepo.Push(pushOptions))
 	fmt.Printf("Response from first push:\n %s\n", progressBuffer.String())
 
 	progressBuffer.Reset()
 
-	newHead, err := worktree.Commit("New commit", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Author",
-			Email: "author@example.com",
-			When:  time.Now(),
-		},
-	})
+	err = os.WriteFile(filepath.Join(repo.Path, "CHANGES"), []byte("changes"), 0644)
+	assert.Nil(err)
+	_, err = worktree.Add("CHANGES")
+	assert.Nil(err)
+
+	newHead, err := worktree.Commit("New commit", commitOpts)
+	assert.Nil(err)
 
 	assert.Nil(gitRepo.Push(pushOptions))
 	fmt.Printf("Response from second push:\n %s\n", progressBuffer.String())
@@ -92,7 +111,7 @@ func TestIntegrtionForGitHooks(t *testing.T) {
 			message:  "Initial commit",
 			commitId: origHead.String(),
 			target: events.PushPayloadCommitTarget{
-				Branch: "master",
+				Branch: branchName,
 			},
 		},
 		{
@@ -100,7 +119,7 @@ func TestIntegrtionForGitHooks(t *testing.T) {
 			message:  "New commit",
 			commitId: newHead.String(),
 			target: events.PushPayloadCommitTarget{
-				Branch: "master",
+				Branch: branchName,
 			},
 		},
 	}
