@@ -44,7 +44,7 @@ func (api *API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) 
 //
 // URL: `/repos/<repo>/branches`
 func (_ *API) getBranches(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 
 	var branches []repositories.Branch
 	var response []byte
@@ -65,7 +65,7 @@ func (_ *API) getBranches(w http.ResponseWriter, r *http.Request) {
 //
 // URL: `/repos/<repo>/branches/<branch>/commits?start=<start>`
 func (_ *API) getCommits(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 	branch := params["branch"]
 	start := r.URL.Query().Get("start")
@@ -92,7 +92,7 @@ func (_ *API) getCommits(w http.ResponseWriter, r *http.Request) {
 //
 // URL: `/repos/<repo>/commit/<commit-id>`
 func (_ *API) getCommit(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 	commitId := params["commit-id"]
 
@@ -119,7 +119,7 @@ func (_ *API) getCommit(w http.ResponseWriter, r *http.Request) {
 //
 // URL: `/repos/<repo>/file/<file-id>`
 func (_ *API) getFile(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
 	var contents []byte
@@ -140,7 +140,7 @@ func (_ *API) getFile(w http.ResponseWriter, r *http.Request) {
 //
 // URL: `/repos/<repo>/file/<file-id>`
 func (_ *API) getFileExists(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
 	var exists bool
@@ -162,7 +162,7 @@ func (_ *API) getFileExists(w http.ResponseWriter, r *http.Request) {
 //
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
 func (_ *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 
 	commitId := params["commit-id"]
@@ -190,7 +190,7 @@ func (_ *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 //
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
 func (_ *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
-	repo := r.Context().Value("repo").(repositories.Repository)
+	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 
 	commitId := params["commit-id"]

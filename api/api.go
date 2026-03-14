@@ -17,8 +17,14 @@ import (
 	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
+// contextKey is a private type for context keys to avoid collisions.
+type contextKey string
+
 const (
 	PrivateTokenHeader = "PRIVATE-TOKEN"
+
+	// repoContextKey is the context key for the repository.
+	repoContextKey contextKey = "repo"
 )
 
 type routingEntry struct {
@@ -209,7 +215,7 @@ func (api *API) withRepository(next http.Handler) http.Handler {
 		} else if repo, exists = api.config.Repositories[repoName]; !exists {
 			http.Error(w, "Repository not found.", http.StatusNotFound)
 		} else {
-			ctx := context.WithValue(r.Context(), "repo", repo)
+			ctx := context.WithValue(r.Context(), repoContextKey, repo)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
