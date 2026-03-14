@@ -1,42 +1,67 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
-
-	"github.com/alecthomas/kingpin"
 
 	"github.com/reviewboard/rb-gateway/commands"
 	"github.com/reviewboard/rb-gateway/config"
 )
 
-var (
-	app        = kingpin.New("rb-gateway", "Repository API server.")
-	configPath = app.Flag("config", "Path to configuration file.").
-			Default(config.DefaultConfigPath).
-			String()
+// version is set at build time via -ldflags.
+var version = "dev"
 
-	serve = app.Command("serve", "Start the API server.").Default()
+func usage() {
+	fmt.Fprintf(os.Stderr, `rb-gateway - Repository API server.
 
-	webhook  = app.Command("trigger-webhooks", "Trigger matching webhooks.")
-	repoName = webhook.Arg("repository", "The name of the repository to trigger the webhook for.").
-			Required().
-			String()
-	event = webhook.Arg("event", "The name of the event.").
-		Required().
-		String()
+Usage:
+  rb-gateway [--config PATH] <command> [args...]
 
-	reinstallHooks = app.Command("reinstall-hooks", "Re-install hook scripts if  the configuration path has changed.")
-)
+Commands:
+  serve               Start the API server (default).
+  trigger-webhooks    Trigger matching webhooks.
+  reinstall-hooks     Re-install hook scripts if the configuration path has changed.
+
+Flags:
+  --config PATH       Path to configuration file (default: %s).
+`, config.DefaultConfigPath)
+}
 
 func main() {
-	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
-	case serve.FullCommand():
+	configPath := flag.String("config", config.DefaultConfigPath, "Path to configuration file.")
+	showVersion := flag.Bool("version", false, "Print version and exit.")
+	flag.Usage = usage
+	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
+
+	cmd := flag.Arg(0)
+	if cmd == "" {
+		cmd = "serve"
+	}
+
+	switch cmd {
+	case "serve":
 		commands.Serve(*configPath)
 
-	case webhook.FullCommand():
-		commands.TriggerWebhooks(*configPath, *repoName, *event)
+	case "trigger-webhooks":
+		args := flag.Args()
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "Usage: rb-gateway trigger-webhooks <repository> <event>")
+			os.Exit(1)
+		}
+		commands.TriggerWebhooks(*configPath, args[1], args[2])
 
-	case reinstallHooks.FullCommand():
+	case "reinstall-hooks":
 		commands.ReinstallHooks(*configPath)
+
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", cmd)
+		usage()
+		os.Exit(1)
 	}
 }
