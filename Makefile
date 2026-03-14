@@ -1,11 +1,14 @@
-.PHONY: build test integration-tests
+.PHONY: build test integration-tests format lint
+
+VERSION := $(shell cat VERSION)
+LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 
 all: build
 
-build: vendor
-	go build
+build: deps
+	go build $(LDFLAGS)
 
-vendor:
+deps:
 	go mod download
 
 test:
@@ -14,10 +17,12 @@ test:
 
 integration-tests:
 	$(eval TMPDIR := $(shell mktemp -d))
-	go build -o $(TMPDIR)/rb-gateway
+	go build $(LDFLAGS) -o $(TMPDIR)/rb-gateway
 	-env RBGATEWAY_PATH=$(TMPDIR)/rb-gateway go test ./integration_tests
 	rm -rf $(TMPDIR)
 
-.PHONY: format
 format:
 	go fmt ./...
+
+lint:
+	go vet ./...
