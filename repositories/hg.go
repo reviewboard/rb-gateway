@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	hg "bitbucket.org/gohg/gohg"
-	"github.com/go-ini/ini"
+	"gopkg.in/ini.v1"
 	"github.com/kballard/go-shellquote"
 
 	"github.com/reviewboard/rb-gateway/repositories/events"

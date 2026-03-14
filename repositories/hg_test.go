@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-ini/ini"
+	"gopkg.in/ini.v1"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/reviewboard/rb-gateway/helpers"
