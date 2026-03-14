@@ -11,7 +11,7 @@ const (
 	rawTokenSize = 32
 )
 
-// A memory-ony token store for unit testing.
+// A memory-only token store for unit testing.
 //
 // This store is not re-entrant and should only be used for unit tests. Tokens do not
 // persist between restarts.

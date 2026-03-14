@@ -26,7 +26,7 @@ import (
 // into it, with an RB Gateway configuration that points a webhook at a
 // webserver we are running. Then we push some commits to it and monitor the
 // requests made to the webserver, verifying that they are correct.
-func TestIntegrtionForGitHooks(t *testing.T) {
+func TestIntegrationForGitHooks(t *testing.T) {
 	assert := assert.New(t)
 
 	server, requestsChan := helpers.CreateRequestRecorder(t)

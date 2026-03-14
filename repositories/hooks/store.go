@@ -76,7 +76,7 @@ func ReadStore(r io.Reader, repositories map[string]struct{}) (WebhookStore, err
 //
 // The store will first be written to a temporary file and will then be moved
 // to the target location. This is done to avoid `rb-gateway trigger-webhooks`
-// processess from reading the file as we are writing to it, causing errors.
+// processes from reading the file as we are writing to it, causing errors.
 func (s WebhookStore) Save(path string) error {
 	tmpfile, err := os.CreateTemp("", "tmp-store")
 	if err != nil {

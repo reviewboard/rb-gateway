@@ -38,7 +38,7 @@ func InvokeAllHooks(
 	})
 
 	if errs != nil {
-		return fmt.Errorf("%d errors occurred wihle processing webhooks", len(errs))
+		return fmt.Errorf("%d errors occurred while processing webhooks", len(errs))
 	}
 
 	return nil

@@ -16,7 +16,7 @@ type FileStore struct {
 	tokens MemoryStore
 }
 
-// Create a new store from the conents of file at the given path.
+// Create a new store from the contents of file at the given path.
 func NewFileStore(path string) (*FileStore, error) {
 	if path == ":memory:" {
 		panic("Cannot create FileStore in memory")

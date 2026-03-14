@@ -96,7 +96,7 @@ func (repo *HgRepository) GetFileByCommit(changeset, filepath string) ([]byte, e
 	return repo.runHg("cat", "-r", changeset, filepath)
 }
 
-// Return whther or not a file exists.
+// Return whether or not a file exists.
 //
 // It returns true if the file exists, false otherwise. On failure, the error
 // will also be returned.
