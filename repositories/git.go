@@ -136,7 +136,7 @@ func (repo *GitRepository) FileExists(id string) (bool, error) {
 
 	_, err = gitRepo.BlobObject(plumbing.NewHash(id))
 	if err != nil {
-		if err.Error() == "object not found" {
+		if errors.Is(err, plumbing.ErrObjectNotFound) {
 			return false, nil
 		} else {
 			return false, err
@@ -288,7 +288,7 @@ func (repo *GitRepository) GetCommit(commitId string) (*Commit, error) {
 
 	commit, err := gitRepo.CommitObject(plumbing.NewHash(commitId))
 	if err != nil {
-		if err.Error() == "object not found" {
+		if errors.Is(err, plumbing.ErrObjectNotFound) {
 			return nil, nil
 		} else {
 			return nil, err

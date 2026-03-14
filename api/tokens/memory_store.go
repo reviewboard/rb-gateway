@@ -55,7 +55,7 @@ func (store MemoryStore) New() (*string, error) {
 
 	for i := 0; i < maxAttempts; i++ {
 		if _, err := rand.Read(raw[:]); err != nil {
-			return nil, fmt.Errorf("Could not generate token: %s\n", err.Error())
+			return nil, fmt.Errorf("Could not generate token: %w", err)
 		}
 
 		token := fmt.Sprintf("%X", raw)
@@ -65,7 +65,7 @@ func (store MemoryStore) New() (*string, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Could not generate token after %d attempts.\n", maxAttempts)
+	return nil, fmt.Errorf("Could not generate token after %d attempts.", maxAttempts)
 }
 
 // Return whether or not a token exists in the store.

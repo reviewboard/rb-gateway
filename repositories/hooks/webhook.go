@@ -63,7 +63,7 @@ func (hook Webhook) Validate(repos map[string]struct{}) error {
 
 	url, err := url.Parse(hook.Url)
 	if err != nil {
-		return fmt.Errorf("Invalid URL: %s", err.Error())
+		return fmt.Errorf("Invalid URL: %w", err)
 	}
 
 	if url.Scheme != "http" && url.Scheme != "https" {
