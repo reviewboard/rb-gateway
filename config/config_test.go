@@ -2,7 +2,6 @@ package config_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,7 +15,7 @@ import (
 func TestLoadConfig(t *testing.T) {
 	assert := assert.New(t)
 
-	file, err := ioutil.TempFile("", "rb-gateway-config-")
+	file, err := os.CreateTemp("", "rb-gateway-config-")
 	assert.Nil(err)
 	defer file.Close()
 
@@ -71,7 +70,7 @@ func TestLoadConfig(t *testing.T) {
 func TestLoadConfigAllFieldsMissing(t *testing.T) {
 	assert := assert.New(t)
 
-	file, err := ioutil.TempFile("", "rb-gateway-config-")
+	file, err := os.CreateTemp("", "rb-gateway-config-")
 	assert.Nil(err)
 
 	path := file.Name()
@@ -90,7 +89,7 @@ func TestLoadConfigAllFieldsMissing(t *testing.T) {
 func TestLoadConfigPortMissing(t *testing.T) {
 	assert := assert.New(t)
 
-	file, err := ioutil.TempFile("", "rb-gateway-config-")
+	file, err := os.CreateTemp("", "rb-gateway-config-")
 	assert.Nil(err)
 
 	path := file.Name()
@@ -135,7 +134,7 @@ func TestLoadConfigPortMissing(t *testing.T) {
 func TestLoadConfigTlsMissing(t *testing.T) {
 	assert := assert.New(t)
 
-	file, err := ioutil.TempFile("", "rb-gateway-config-")
+	file, err := os.CreateTemp("", "rb-gateway-config-")
 	assert.Nil(err)
 
 	path := file.Name()
@@ -172,7 +171,7 @@ func TestLoadConfigTls(t *testing.T) {
 	repo, _ := helpers.CreateGitRepo(t, "repo")
 	defer helpers.CleanupRepository(t, repo.Path)
 
-	dir, err := ioutil.TempDir("", "rb-gateway-test")
+	dir, err := os.MkdirTemp("", "rb-gateway-test")
 	assert.Nil(err)
 
 	cfgPath := filepath.Join(dir, "config.json")

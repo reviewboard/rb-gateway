@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -48,7 +48,7 @@ func testRoute(t *testing.T, cfg *config.Config, url, method string, body []byte
 	request.Header.Set(api.PrivateTokenHeader, *token)
 
 	if body != nil {
-		request.Body = ioutil.NopCloser(bytes.NewReader(body))
+		request.Body = io.NopCloser(bytes.NewReader(body))
 	}
 
 	handler.ServeHTTP(response, request)

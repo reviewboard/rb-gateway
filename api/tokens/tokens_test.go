@@ -1,7 +1,6 @@
 package tokens_test
 
 import (
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -55,7 +54,7 @@ func TestGetFromRequest(t *testing.T) {
 func TestFileStoreLoadSave(t *testing.T) {
 	assert := assert.New(t)
 
-	tmpdir, err := ioutil.TempDir("", "rb-gateway-test-")
+	tmpdir, err := os.MkdirTemp("", "rb-gateway-test-")
 	assert.Nil(err)
 	defer os.RemoveAll(tmpdir)
 
@@ -96,7 +95,7 @@ func TestFileStoreLoadSave(t *testing.T) {
 func TestFileStoreExistsEmpty(t *testing.T) {
 	assert := assert.New(t)
 
-	tmpfile, err := ioutil.TempFile("", "rb-gateway-tokens.dat-")
+	tmpfile, err := os.CreateTemp("", "rb-gateway-tokens.dat-")
 	assert.Nil(err)
 
 	defer tmpfile.Close()

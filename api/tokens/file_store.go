@@ -2,7 +2,7 @@ package tokens
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -33,7 +33,7 @@ func NewFileStore(path string) (*FileStore, error) {
 		if f != nil {
 			defer f.Close()
 
-			bytes, err := ioutil.ReadAll(f)
+			bytes, err := io.ReadAll(f)
 			if err != nil {
 				return nil, err
 			}

@@ -175,7 +175,7 @@ func (repo *HgRepository) GetBranches() ([]Branch, error) {
 
 	for _, records := range [][]string{branchRecords, bookmarkRecords} {
 		for _, record := range records {
-			if (len(record) == 0) {
+			if len(record) == 0 {
 				continue
 			}
 

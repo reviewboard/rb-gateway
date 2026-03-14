@@ -2,7 +2,6 @@ package repositories_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,7 +33,7 @@ func TestInstallGitHooks(t *testing.T) {
 	exePath, err := filepath.Abs(os.Args[0])
 	assert.Nil(err)
 
-	rawContent, err := ioutil.ReadFile(scriptPath)
+	rawContent, err := os.ReadFile(scriptPath)
 	assert.Nil(err)
 
 	assert.Equal(fmt.Sprintf(
@@ -43,7 +42,7 @@ func TestInstallGitHooks(t *testing.T) {
 		exePath),
 		string(rawContent))
 
-	rawContent, err = ioutil.ReadFile(dispatchPath)
+	rawContent, err = os.ReadFile(dispatchPath)
 	assert.Nil(err)
 	expected := `#!/bin/bash
 # Run hooks in .git/hooks/post-receive.d
@@ -96,7 +95,7 @@ func TestInstallGitHooksQuoted(t *testing.T) {
 	exePath, err := filepath.Abs(os.Args[0])
 	assert.Nil(err)
 
-	content, err := ioutil.ReadFile(scriptPath)
+	content, err := os.ReadFile(scriptPath)
 	assert.Nil(err)
 
 	assert.Equal(fmt.Sprintf(
@@ -119,7 +118,7 @@ func TestInstallGitHooksPreexisting(t *testing.T) {
 	origPath := filepath.Join(repo.Path, ".git", "hooks", "post-receive.d", "00-original-post-receive")
 	scriptPath := filepath.Join(repo.Path, ".git", "hooks", "post-receive.d", "99-rbgateway-push-event.sh")
 
-	err = ioutil.WriteFile(dispatchPath, []byte("#!/bin/true\n"), 0777)
+	err = os.WriteFile(dispatchPath, []byte("#!/bin/true\n"), 0777)
 	assert.Nil(err)
 
 	assert.FileExists(dispatchPath)
@@ -135,7 +134,7 @@ func TestInstallGitHooksPreexisting(t *testing.T) {
 	assert.FileExists(scriptPath)
 	assert.FileExists(origPath)
 
-	content, err := ioutil.ReadFile(origPath)
+	content, err := os.ReadFile(origPath)
 	assert.Nil(err)
 
 	assert.Equal("#!/bin/true\n", string(content))
@@ -158,8 +157,8 @@ func TestInstallGitHooksForce(t *testing.T) {
 
 	binTrue := []byte("#!/bin/true\n")
 
-	assert.Nil(ioutil.WriteFile(dispatchPath, binTrue, 0600))
-	assert.Nil(ioutil.WriteFile(scriptPath, binTrue, 0600))
+	assert.Nil(os.WriteFile(dispatchPath, binTrue, 0600))
+	assert.Nil(os.WriteFile(scriptPath, binTrue, 0600))
 
 	err = repo.InstallHooks("/tmp/config", true)
 	if err != nil {
@@ -171,10 +170,10 @@ func TestInstallGitHooksForce(t *testing.T) {
 	assert.FileExists(dispatchPath)
 	assert.FileExists(scriptPath)
 
-	dispatch, err := ioutil.ReadFile(dispatchPath)
+	dispatch, err := os.ReadFile(dispatchPath)
 	assert.Nil(err)
 
-	script, err := ioutil.ReadFile(scriptPath)
+	script, err := os.ReadFile(scriptPath)
 	assert.Nil(err)
 
 	expectedDispatch := `#!/bin/bash

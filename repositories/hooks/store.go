@@ -3,7 +3,6 @@ package hooks
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"sort"
@@ -52,7 +51,7 @@ func LoadStore(path string, repositories map[string]struct{}) (WebhookStore, err
 //
 // Callers should prefer the higher-level `LoadStore` over this function.
 func ReadStore(r io.Reader, repositories map[string]struct{}) (WebhookStore, error) {
-	content, err := ioutil.ReadAll(r)
+	content, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func ReadStore(r io.Reader, repositories map[string]struct{}) (WebhookStore, err
 // to the target location. This is done to avoid `rb-gateway trigger-webhooks`
 // processess from reading the file as we are writing to it, causing errors.
 func (s WebhookStore) Save(path string) error {
-	tmpfile, err := ioutil.TempFile("", "tmp-store")
+	tmpfile, err := os.CreateTemp("", "tmp-store")
 	if err != nil {
 		return err
 	}

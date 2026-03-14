@@ -3,7 +3,6 @@ package integration_tests
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -114,7 +113,7 @@ func setupBareGitRepo(t *testing.T) *repositories.GitRepository {
 	t.Helper()
 	assert := assert.New(t)
 
-	repoDir, err := ioutil.TempDir("", "rb-gateway-bare-repo-")
+	repoDir, err := os.MkdirTemp("", "rb-gateway-bare-repo-")
 	assert.Nil(err)
 
 	_, err = git.PlainInit(repoDir, true)

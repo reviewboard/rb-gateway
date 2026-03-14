@@ -2,7 +2,7 @@ package integration_tests
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,7 +21,7 @@ func setupConfig(t *testing.T, upstream repositories.Repository) (string, config
 	t.Helper()
 	assert := assert.New(t)
 
-	cfgDir, err := ioutil.TempDir("", "rb-gateway-config-")
+	cfgDir, err := os.MkdirTemp("", "rb-gateway-config-")
 	assert.Nil(err)
 	cfg := helpers.CreateTestConfig(t, upstream)
 

@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -46,7 +45,7 @@ func WriteConfig(t *testing.T, path string, cfg *config.Config) {
 	data, err := json.Marshal(cfg)
 	assert.Nil(err)
 
-	err = ioutil.WriteFile(path, data, 0600)
+	err = os.WriteFile(path, data, 0600)
 	assert.Nil(err)
 }
 
@@ -55,7 +54,7 @@ func CreateTestHtpasswd(t *testing.T, username, password string, cfg *config.Con
 	t.Helper()
 	assert := assert.New(t)
 
-	tmpfile, err := ioutil.TempFile("", "htpasswd-")
+	tmpfile, err := os.CreateTemp("", "htpasswd-")
 	assert.Nil(err)
 
 	cfg.HtpasswdPath = tmpfile.Name()
@@ -72,7 +71,7 @@ func WriteTestWebhookStore(t *testing.T, store hooks.WebhookStore, cfg *config.C
 	t.Helper()
 	assert := assert.New(t)
 
-	tmpfile, err := ioutil.TempFile("", "rbgateway-webhooks-")
+	tmpfile, err := os.CreateTemp("", "rbgateway-webhooks-")
 	assert.Nil(err)
 
 	cfg.WebhookStorePath = tmpfile.Name()

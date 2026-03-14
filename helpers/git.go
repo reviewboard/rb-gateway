@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -21,18 +21,20 @@ import (
 // Example:
 //
 // ```go
-// func Test(t *testing.T) {
-//     repo, rawRepo := testing.CreateGitRepo(t)
-//     defer testing.CleanupRepository(t, repo.Path)
 //
-//     // ...
-// }
+//	func Test(t *testing.T) {
+//	    repo, rawRepo := testing.CreateGitRepo(t)
+//	    defer testing.CleanupRepository(t, repo.Path)
+//
+//	    // ...
+//	}
+//
 // ```
 func CreateGitRepo(t *testing.T, name string) (*repositories.GitRepository, *git.Repository) {
 	t.Helper()
 	assert := assert.New(t)
 
-	path, err := ioutil.TempDir("", "rb-gateway-test-")
+	path, err := os.MkdirTemp("", "rb-gateway-test-")
 	assert.Nil(err, "Could not create temporary directory.")
 	path, err = filepath.EvalSymlinks(path)
 	assert.Nil(err, "Could not get absolute path.")
@@ -145,7 +147,7 @@ func createAndAddFilesGit(t *testing.T, path string, worktree *git.Worktree, fil
 	for filename, content := range files {
 		path := filepath.Join(path, filename)
 
-		err := ioutil.WriteFile(path, content, 0644)
+		err := os.WriteFile(path, content, 0644)
 		assert.Nil(err)
 
 		_, err = worktree.Add(filename)

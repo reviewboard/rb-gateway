@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,18 +22,20 @@ const (
 // Example:
 //
 // ```go
-// func Test(t *testing.T) {
-//     repo, hgClient := testing.CreateHgtRepo(t, "repo-name")
-//     defer testing.CleanupHgRepo(t, hgClient)
 //
-//     // ...
-// }
+//	func Test(t *testing.T) {
+//	    repo, hgClient := testing.CreateHgtRepo(t, "repo-name")
+//	    defer testing.CleanupHgRepo(t, hgClient)
+//
+//	    // ...
+//	}
+//
 // ```
 func CreateHgRepo(t *testing.T, name string) (*repositories.HgRepository, *hg.HgClient) {
 	t.Helper()
 	assert := assert.New(t)
 
-	path, err := ioutil.TempDir("", "rb-gateway-hg-repo-")
+	path, err := os.MkdirTemp("", "rb-gateway-hg-repo-")
 	assert.Nil(err)
 
 	path, err = filepath.EvalSymlinks(path)
@@ -94,7 +95,7 @@ func CreateAndAddFilesHg(t *testing.T, repoPath string, client *hg.HgClient, fil
 
 	for filename, content := range files {
 		path := filepath.Join(repoPath, filename)
-		err := ioutil.WriteFile(path, content, 0644)
+		err := os.WriteFile(path, content, 0644)
 		assert.Nil(err)
 
 		_, err = client.ExecCmd([]string{"add", filename})

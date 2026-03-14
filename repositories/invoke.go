@@ -3,7 +3,7 @@ package repositories
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 
@@ -75,7 +75,7 @@ func invokeHook(
 	defer rsp.Body.Close()
 	if rsp.StatusCode < 200 || rsp.StatusCode > 299 {
 		log.Printf("Expected status 2XX, received %s.", rsp.Status)
-		body, err := ioutil.ReadAll(rsp.Body)
+		body, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}

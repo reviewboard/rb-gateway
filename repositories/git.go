@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -349,7 +348,7 @@ func (repo *GitRepository) parsePushEvent(
 	event string,
 	input io.Reader,
 ) (events.Payload, error) {
-	data, err := ioutil.ReadAll(input)
+	data, err := io.ReadAll(input)
 
 	if err != nil {
 		return nil, err
@@ -583,7 +582,7 @@ func (repo *GitRepository) commonDir() (dir string, err error) {
 
 	// or a file with `gitdir: {path}` in the case of a worktree.
 	var rawContent []byte
-	if rawContent, err = ioutil.ReadFile(filepath.Join(parent, stat.Name())); err != nil {
+	if rawContent, err = os.ReadFile(filepath.Join(parent, stat.Name())); err != nil {
 		return
 	}
 

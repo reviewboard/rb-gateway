@@ -2,7 +2,6 @@ package integration_tests
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -81,7 +80,7 @@ func setupBareHgRepository(t *testing.T) (*repositories.HgRepository, *hg.HgClie
 	t.Helper()
 	assert := assert.New(t)
 
-	repoDir, err := ioutil.TempDir("", "rb-gateway-bare-repo-")
+	repoDir, err := os.MkdirTemp("", "rb-gateway-bare-repo-")
 	assert.Nil(err)
 
 	client := hg.NewHgClient()
@@ -101,7 +100,7 @@ func cloneHgUpstream(t *testing.T, upstream *hg.HgClient) (*repositories.HgRepos
 	t.Helper()
 	assert := assert.New(t)
 
-	cloneDir, err := ioutil.TempDir("", "rb-gateway-clone-repo-")
+	cloneDir, err := os.MkdirTemp("", "rb-gateway-clone-repo-")
 	assert.Nil(err)
 
 	assert.Nil(upstream.Clone(nil, []string{upstream.RepoRoot(), cloneDir}))
