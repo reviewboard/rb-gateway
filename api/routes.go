@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	auth "github.com/abbot/go-http-auth"
-
 	"github.com/reviewboard/rb-gateway/repositories"
 	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
@@ -15,7 +13,7 @@ import (
 // Return a session given basic auth credentials.
 //
 // URL: `/session`
-func (api *API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+func (api *API) getSession(w http.ResponseWriter, r *http.Request) {
 	token, err := api.tokenStore.New()
 
 	if err != nil {

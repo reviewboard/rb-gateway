@@ -4,13 +4,13 @@ go 1.22
 
 require (
 	bitbucket.org/gohg/gohg v0.0.0-20140720204206-32d5a063a72b
-	github.com/abbot/go-http-auth v0.4.0
 	github.com/foomo/htpasswd v0.0.0-20180422071726-cb63c4ac0e50
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-git/go-git/v5 v5.13.1
 	github.com/go-ini/ini v1.37.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/stretchr/testify v1.10.0
+	golang.org/x/crypto v0.31.0
 )
 
 require (
@@ -32,7 +32,6 @@ require (
 	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect

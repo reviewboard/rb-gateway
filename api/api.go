@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	auth "github.com/abbot/go-http-auth"
-
 	"github.com/reviewboard/rb-gateway/api/tokens"
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/repositories/hooks"
@@ -45,8 +43,8 @@ type API struct {
 	// The token store.
 	tokenStore tokens.TokenStore
 
-	// The authenticator for requesting tokens.
-	authenticator *auth.BasicAuth
+	// The secret provider for basic auth.
+	secretProvider secretProvider
 
 	// The structured logger.
 	logger *slog.Logger
@@ -55,10 +53,9 @@ type API struct {
 // Return a new router for the API.
 func New(cfg *config.Config) (*API, error) {
 	api := API{
-		config:        &config.Config{},
-		router:        http.NewServeMux(),
-		authenticator: auth.NewBasicAuthenticator("RB Gateway", nil),
-		logger:        slog.Default(),
+		config: &config.Config{},
+		router: http.NewServeMux(),
+		logger: slog.Default(),
 	}
 
 	if err := api.setConfigUnsafe(cfg); err != nil {
@@ -66,8 +63,8 @@ func New(cfg *config.Config) (*API, error) {
 	}
 
 	// Session endpoint uses basic auth.
-	api.router.HandleFunc("GET /session", api.authenticator.Wrap(api.getSession))
-	api.router.HandleFunc("POST /session", api.authenticator.Wrap(api.getSession))
+	api.router.HandleFunc("GET /session", api.withBasicAuth(api.getSession))
+	api.router.HandleFunc("POST /session", api.withBasicAuth(api.getSession))
 
 	// Repository routes (require token auth + repo middleware).
 	api.router.Handle("GET /repos/{repo}/branches", api.withAuth(api.withRepo(api.getBranches)))
@@ -160,7 +157,7 @@ func (api *API) setConfigUnsafe(newConfig *config.Config) error {
 	}
 
 	api.tokenStore = tokenStore
-	api.authenticator.Secrets = provider
+	api.secretProvider = provider
 	api.config = newConfig
 	api.hookStore = hookStore
 	return nil
