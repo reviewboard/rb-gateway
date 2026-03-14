@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -15,33 +15,39 @@ import (
 func TriggerWebhooks(configPath, repoName, event string) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		log.Fatal("Could not parse configuration: ", err.Error())
+		slog.Error("could not parse configuration", "err", err)
+		os.Exit(1)
 	}
 
 	var repository repositories.Repository
 	var exists bool
 
 	if repository, exists = cfg.Repositories[repoName]; !exists {
-		log.Fatalf(`Unknown repository: "%s".`, repoName)
+		slog.Error("unknown repository", "repo", repoName)
+		os.Exit(1)
 	}
 
 	if !events.IsValidEvent(event) {
-		log.Fatalf(`Unknown event: "%s"`, event)
+		slog.Error("unknown event", "event", event)
+		os.Exit(1)
 	}
 
 	store, err := hooks.LoadStore(cfg.WebhookStorePath, cfg.RepositorySet())
 
 	if err != nil {
-		log.Fatal("Could not load webhook store: ", err.Error())
+		slog.Error("could not load webhook store", "err", err)
+		os.Exit(1)
 	}
 
 	payload, err := repository.ParseEventPayload(event, os.Stdin)
 	if err != nil {
-		log.Fatal("Could not parse event payload: ", err.Error())
+		slog.Error("could not parse event payload", "err", err)
+		os.Exit(1)
 	}
 
 	err = repositories.InvokeAllHooks(http.DefaultClient, store, event, repository, payload)
 	if err != nil {
-		log.Fatal(err.Error())
+		slog.Error("error invoking hooks", "err", err)
+		os.Exit(1)
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	auth "github.com/abbot/go-http-auth"
@@ -21,7 +20,7 @@ func (api *API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) 
 	token, err := api.tokenStore.New()
 
 	if err != nil {
-		log.Printf("Could not create session: %s", err.Error())
+		api.logger.Error("could not create session", "err", err)
 		http.Error(w, "Could not create session", http.StatusInternalServerError)
 	}
 
@@ -31,7 +30,7 @@ func (api *API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) 
 
 	json, err := json.Marshal(&session)
 	if err != nil {
-		log.Printf("Could not serialize session: %s", err.Error())
+		api.logger.Error("could not serialize session", "err", err)
 		http.Error(w, "Could not create session", http.StatusInternalServerError)
 		return
 	}
@@ -43,7 +42,7 @@ func (api *API) getSession(w http.ResponseWriter, r *auth.AuthenticatedRequest) 
 // Return the branches in the repository.
 //
 // URL: `/repos/<repo>/branches`
-func (_ *API) getBranches(w http.ResponseWriter, r *http.Request) {
+func (api *API) getBranches(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 
 	var branches []repositories.Branch
@@ -53,7 +52,7 @@ func (_ *API) getBranches(w http.ResponseWriter, r *http.Request) {
 	if branches, err = repo.GetBranches(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else if response, err = json.Marshal(branches); err != nil {
-		log.Printf("Could not serialize branches: %s", err.Error())
+		api.logger.Error("could not serialize branches", "err", err)
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
@@ -64,7 +63,7 @@ func (_ *API) getBranches(w http.ResponseWriter, r *http.Request) {
 // Return the commits for a branch.
 //
 // URL: `/repos/<repo>/branches/<branch>/commits?start=<start>`
-func (_ *API) getCommits(w http.ResponseWriter, r *http.Request) {
+func (api *API) getCommits(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 	branch := params["branch"]
@@ -80,7 +79,7 @@ func (_ *API) getCommits(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Could not get branches: %s", err.Error()),
 			http.StatusBadRequest)
 	} else if response, err = json.Marshal(commits); err != nil {
-		log.Printf("Could not serialize commits: %s", err.Error())
+		api.logger.Error("could not serialize commits", "err", err)
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
@@ -91,7 +90,7 @@ func (_ *API) getCommits(w http.ResponseWriter, r *http.Request) {
 // Return a commit.
 //
 // URL: `/repos/<repo>/commit/<commit-id>`
-func (_ *API) getCommit(w http.ResponseWriter, r *http.Request) {
+func (api *API) getCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 	commitId := params["commit-id"]
@@ -107,7 +106,7 @@ func (_ *API) getCommit(w http.ResponseWriter, r *http.Request) {
 	} else if commit == nil {
 		http.Error(w, "Commit ID not found.", http.StatusNotFound)
 	} else if response, err = json.Marshal(*commit); err != nil {
-		log.Printf("Could not serialize commit \"%s\" in repo \"%s\": %s", commit.Id, repo.GetName(), err.Error())
+		api.logger.Error("could not serialize commit", "commit", commit.Id, "repo", repo.GetName(), "err", err)
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
@@ -118,7 +117,7 @@ func (_ *API) getCommit(w http.ResponseWriter, r *http.Request) {
 // Return the contents of a file (identified by an object ID) in a repository.
 //
 // URL: `/repos/<repo>/file/<file-id>`
-func (_ *API) getFile(w http.ResponseWriter, r *http.Request) {
+func (api *API) getFile(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
@@ -139,7 +138,7 @@ func (_ *API) getFile(w http.ResponseWriter, r *http.Request) {
 // Return whether or not a file (identified by an object ID) exists in a repository.
 //
 // URL: `/repos/<repo>/file/<file-id>`
-func (_ *API) getFileExists(w http.ResponseWriter, r *http.Request) {
+func (api *API) getFileExists(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	objectId := mux.Vars(r)["file-id"]
 
@@ -161,7 +160,7 @@ func (_ *API) getFileExists(w http.ResponseWriter, r *http.Request) {
 // Return the contents of a file (at a specific commit) in a repository.
 //
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
-func (_ *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
+func (api *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 
@@ -189,7 +188,7 @@ func (_ *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 // Return whether or not a file (at a specific commit) exists in the repository.
 //
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
-func (_ *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
+func (api *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
 	params := mux.Vars(r)
 
@@ -224,7 +223,7 @@ func (_ *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 // 200 OK.
 //
 // URL: `/repos/<repo>/path`
-func (_ *API) getPath(w http.ResponseWriter, r *http.Request) {
+func (api *API) getPath(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -244,7 +243,7 @@ func (api *API) getHooks(w http.ResponseWriter, r *http.Request) {
 
 		b, err := json.Marshal(hook)
 		if err != nil {
-			log.Printf("Could not serialize hooks: %s", err.Error())
+			api.logger.Error("could not serialize hooks", "err", err)
 			http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 			return
 		}
@@ -289,7 +288,7 @@ func (api *API) createHook(w http.ResponseWriter, r *http.Request) {
 	if err := api.hookStore.Save(api.config.WebhookStorePath); err != nil {
 		// If we cannot save the store, revert our state so that we stay
 		// consistent with it.
-		log.Println("Could not save webhook store: ", err.Error())
+		api.logger.Error("could not save webhook store", "err", err)
 		delete(api.hookStore, hook.Id)
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
@@ -311,7 +310,7 @@ func (api *API) getHook(w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(hook)
 	if err != nil {
-		log.Printf("Could not serialize hooks: %s", err.Error())
+		api.logger.Error("could not serialize hook", "err", err)
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 		return
 	}
@@ -336,7 +335,7 @@ func (api *API) deleteHook(w http.ResponseWriter, r *http.Request) {
 	if err := api.hookStore.Save(api.config.WebhookStorePath); err != nil {
 		// If we cannot save the store, revert our state so that we stay
 		// consistent with it.
-		log.Println("Could not save webhook store: ", err.Error())
+		api.logger.Error("could not save webhook store", "err", err)
 		api.hookStore[hookId] = hook
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
@@ -417,7 +416,7 @@ func (api *API) updateHook(w http.ResponseWriter, r *http.Request) {
 		// If we cannot save the store, revert our state so that we stay
 		// consistent with it.
 		api.hookStore[hook.Id] = hook
-		log.Println("Could not update hook store: ", err.Error())
+		api.logger.Error("could not save webhook store", "err", err)
 		http.Error(w, "An unexpected error occurred.", http.StatusInternalServerError)
 	} else {
 		var b []byte

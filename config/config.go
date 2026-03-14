@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,7 +78,7 @@ func Load(path string) (*Config, error) {
 			}
 
 		default:
-			log.Printf("Unknown SCM '%s' while loading configuration '%s'; ignoring.", repo.Scm, path)
+			slog.Warn("unknown SCM in configuration, ignoring", "scm", repo.Scm, "config", path)
 		}
 	}
 
@@ -100,7 +100,7 @@ func validate(cfgDir string, config *Config) (err error) {
 	missingFields := []string{}
 
 	if config.Port == 0 {
-		log.Printf("WARNING: Port missing from config, defaulting to %d.", defaultPort)
+		slog.Warn("port missing from config, using default", "port", defaultPort)
 		config.Port = defaultPort
 	}
 
@@ -134,7 +134,7 @@ func validate(cfgDir string, config *Config) (err error) {
 
 	for _, fieldInfo := range optionalPathFields {
 		if *fieldInfo.field == "" {
-			log.Printf(`Warning: %s missing from config, defaulting to "%v".`, fieldInfo.name, fieldInfo.defaultValue)
+			slog.Warn("config field missing, using default", "field", fieldInfo.name, "default", fieldInfo.defaultValue)
 			*fieldInfo.field = fieldInfo.defaultValue
 		}
 	}

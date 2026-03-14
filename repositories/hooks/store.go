@@ -3,7 +3,7 @@ package hooks
 import (
 	"encoding/json"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"sort"
 
@@ -129,8 +129,7 @@ func validateHook(hook *Webhook, repos map[string]struct{}) bool {
 		if events.IsValidEvent(event) {
 			validEvents = append(validEvents, event)
 		} else {
-			log.Printf(`Unknown event type "%s" in hook "%s"; skipping event.`,
-				event, hook.Id)
+			slog.Warn("unknown event type in hook, skipping", "event", event, "hook", hook.Id)
 		}
 	}
 
@@ -138,23 +137,20 @@ func validateHook(hook *Webhook, repos map[string]struct{}) bool {
 		if _, ok := repos[repo]; ok {
 			validRepos = append(validRepos, repo)
 		} else {
-			log.Printf(`Unknown repo "%s" in hook "%s"; skipping event.`,
-				repo, hook.Id)
+			slog.Warn("unknown repo in hook, skipping", "repo", repo, "hook", hook.Id)
 		}
 	}
 
 	if len(validEvents) == 0 {
-		log.Printf(`Hook "%s" has no valid events; skipping hook.`, hook.Id)
+		slog.Warn("hook has no valid events, skipping", "hook", hook.Id)
 		return false
 	} else if len(validRepos) == 0 {
-		log.Printf(`Hook "%s" has no valid repositories; skipping hook.`, hook.Id)
+		slog.Warn("hook has no valid repositories, skipping", "hook", hook.Id)
 		return false
 	}
 
 	if len(hook.Secret) < 20 {
-		log.Printf(
-			`WARNING: Secret for webhook "%s" is too short (%d bytes); should be at least 20 bytes.`,
-			hook.Id, len(hook.Secret))
+		slog.Warn("webhook secret is too short", "hook", hook.Id, "length", len(hook.Secret))
 	}
 
 	sort.Strings(validEvents)

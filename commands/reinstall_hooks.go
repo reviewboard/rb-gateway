@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/reviewboard/rb-gateway/config"
@@ -11,7 +11,8 @@ import (
 func ReinstallHooks(configPath string) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		log.Fatal("Could not parse configuration: ", err.Error())
+		slog.Error("could not parse configuration", "err", err)
+		os.Exit(1)
 	}
 
 	errors := installHooks(cfg, configPath, true)
@@ -27,9 +28,8 @@ func installHooks(cfg *config.Config, configPath string, force bool) []error {
 	for _, repository := range cfg.Repositories {
 		if err := repository.InstallHooks(configPath, force); err != nil {
 			errors = append(errors, err)
-			log.Printf(
-				`An error occurred while installing hooks for repository "%s": %s`,
-				repository.GetName(), err.Error())
+			slog.Error("error installing hooks for repository",
+				"repo", repository.GetName(), "err", err)
 		}
 	}
 

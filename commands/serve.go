@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,17 +20,20 @@ func Serve(configPath string) {
 		break
 
 	case <-configWatcher.Errors:
-		log.Fatalf("Unable to load configuration file %s. See installation instructions at http://www.reviewboard.org/docs/rbgateway/latest/installation/",
-			configPath)
+		slog.Error("unable to load configuration file, see installation instructions at http://www.reviewboard.org/docs/rbgateway/latest/installation/",
+			"path", configPath)
+		os.Exit(1)
 	}
 
 	if cfg.TokenStorePath == ":memory:" {
-		log.Fatal("Cannot use memory store outside of tests.")
+		slog.Error("cannot use memory store outside of tests")
+		os.Exit(1)
 	}
 
 	api, err := api.New(cfg)
 	if err != nil {
-		log.Fatalf("Could not create API: %s", err.Error())
+		slog.Error("could not create API", "err", err)
+		os.Exit(1)
 	}
 
 	hup := make(chan os.Signal, 1)
@@ -45,43 +48,46 @@ func Serve(configPath string) {
 	for {
 		var newCfg *config.Config = nil
 		shouldExit := false
-		log.Println("Starting rb-gateway server on port", cfg.Port)
-		log.Println("Quit the server with CONTROL-C.")
+		slog.Info("starting rb-gateway server", "port", cfg.Port)
+		slog.Info("quit the server with CONTROL-C")
 
 		server := api.Serve()
 
 		select {
 		case newCfg = <-configWatcher.NewConfig:
-			log.Println("Detected configuration change, reloading...")
+			slog.Info("detected configuration change, reloading...")
 
 		case err := <-configWatcher.Errors:
-			log.Fatal("Unexpected error: ", err)
+			slog.Error("unexpected error", "err", err)
+			os.Exit(1)
 
 		case <-hup:
-			log.Println("Received SIGHUP, reloading configuration...")
+			slog.Info("received SIGHUP, reloading configuration...")
 
 			var err error
 			if newCfg, err = configWatcher.ForceReload(); err != nil {
-				log.Fatal("Unexpected error: ", err)
+				slog.Error("unexpected error", "err", err)
+				os.Exit(1)
 			}
 
 		case <-interrupt:
 			shouldExit = true
 			signal.Reset(os.Interrupt)
-			log.Println("Received SIGINT, shutting down...")
-			log.Println("CONTROL-C again to force quit.")
+			slog.Info("received SIGINT, shutting down...")
+			slog.Info("CONTROL-C again to force quit")
 
 		case <-terminate:
 			shouldExit = true
-			log.Println("Received SIGTERM, shutting down...")
+			slog.Info("received SIGTERM, shutting down...")
 		}
 
 		err = api.Shutdown(server)
 		if err != nil {
-			log.Fatalf("An error occurred while shutting down the server: %s", err.Error())
+			slog.Error("error while shutting down the server", "err", err)
+			os.Exit(1)
 		}
 
-		log.Println("Server shut down.")
+		slog.Info("server shut down")
 
 		if shouldExit {
 			break
@@ -89,12 +95,12 @@ func Serve(configPath string) {
 
 		if newCfg != nil {
 			if newCfg.TokenStorePath == ":memory:" {
-				log.Println("Failed to reload configuration: cannot use memory store outside of tests.")
-				log.Println("Configuration was not reloaded.")
+				slog.Error("failed to reload configuration: cannot use memory store outside of tests")
+				slog.Info("configuration was not reloaded")
 			} else if err = api.SetConfig(newCfg); err != nil {
-				log.Printf("Failed to reload configuration: %s\n", err.Error())
+				slog.Error("failed to reload configuration", "err", err)
 			} else {
-				log.Println("Configuration reloaded.")
+				slog.Info("configuration reloaded")
 
 				// If we have any new repositories, install hooks for them.
 				// We do not need to force install because configPath has not changed.

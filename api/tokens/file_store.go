@@ -3,7 +3,7 @@ package tokens
 import (
 	"encoding/json"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -25,7 +25,7 @@ func NewFileStore(path string) (*FileStore, error) {
 	f, err := os.OpenFile(path, os.O_RDONLY, 0600)
 
 	if err != nil && !os.IsNotExist(err) {
-		log.Printf("Could not open token store at \"%s\": %s", path, err.Error())
+		slog.Error("could not open token store", "path", path, "err", err)
 		return nil, err
 	} else {
 		tokens := make(MemoryStore)

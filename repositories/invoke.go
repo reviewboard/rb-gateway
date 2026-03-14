@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/reviewboard/rb-gateway/repositories/events"
@@ -31,8 +31,7 @@ func InvokeAllHooks(
 	errs := store.ForEach(event, repository.GetName(), func(hook hooks.Webhook) error {
 		err := invokeHook(client, event, repository, hook, rawPayload)
 		if err != nil {
-			log.Printf(`Error ocurred while processing hook "%s" for URL "%s": %s`,
-				hook.Id, hook.Url, err.Error())
+			slog.Error("error processing hook", "hook", hook.Id, "url", hook.Url, "err", err)
 		}
 
 		return err
@@ -64,8 +63,7 @@ func invokeHook(
 	req.Header.Set("X-RBG-Event", event)
 	req.Header.Set("Content-Type", "application/json")
 
-	log.Printf(`Dispatching webhook "%s" for event "%s" for repository "%s" to URL "%s"`,
-		hook.Id, event, repository.GetName(), hook.Url)
+	slog.Info("dispatching webhook", "hook", hook.Id, "event", event, "repo", repository.GetName(), "url", hook.Url)
 
 	rsp, err := client.Do(req)
 	if err != nil {
@@ -74,13 +72,12 @@ func invokeHook(
 
 	defer rsp.Body.Close()
 	if rsp.StatusCode < 200 || rsp.StatusCode > 299 {
-		log.Printf("Expected status 2XX, received %s.", rsp.Status)
 		body, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return err
 		}
 
-		log.Printf("Response body: %s", body)
+		slog.Warn("unexpected webhook response", "status", rsp.Status, "body", string(body))
 	}
 
 	return nil

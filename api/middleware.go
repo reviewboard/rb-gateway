@@ -1,12 +1,10 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
-
-const timeLayout = "02/Jan/2006:15:04:05 -0700"
 
 // A specialized `http.ResponseWriter` for logging.
 type loggingResponseWriter struct {
@@ -27,22 +25,24 @@ func (l *loggingResponseWriter) Write(content []byte) (int, error) {
 	return l.ResponseWriter.Write(content)
 }
 
-// A middleware that provides logging for each HTTP request.
-func loggingMiddleware(next http.Handler) http.Handler {
+// A middleware that provides structured logging for each HTTP request.
+func loggingMiddleware(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := loggingResponseWriter{
+		start := time.Now()
+		lw := loggingResponseWriter{
 			ResponseWriter: w,
 			status:         200,
 			contentLen:     0,
 		}
-		next.ServeHTTP(&logger, r)
-		log.Printf("%s - - [%s] \"%s %s %s\" %d %d",
-			r.RemoteAddr,
-			time.Now().Format(timeLayout),
-			r.Method,
-			r.URL,
-			r.Proto,
-			logger.status,
-			logger.contentLen)
+		next.ServeHTTP(&lw, r)
+		logger.Info("request",
+			"remote", r.RemoteAddr,
+			"method", r.Method,
+			"path", r.URL.String(),
+			"proto", r.Proto,
+			"status", lw.status,
+			"bytes", lw.contentLen,
+			"duration", time.Since(start),
+		)
 	})
 }

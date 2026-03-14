@@ -3,8 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -62,6 +63,9 @@ type API struct {
 
 	// The authenticator for requesting tokens.
 	authenticator *auth.BasicAuth
+
+	// The structured logger.
+	logger *slog.Logger
 }
 
 // Return a new router for the API.
@@ -70,6 +74,7 @@ func New(cfg *config.Config) (*API, error) {
 		config:        &config.Config{},
 		router:        mux.NewRouter(),
 		authenticator: auth.NewBasicAuthenticator("RB Gateway", nil),
+		logger:        slog.Default(),
 	}
 
 	if err := api.setConfigUnsafe(cfg); err != nil {
@@ -177,7 +182,7 @@ func (api *API) Shutdown(server *http.Server) error {
 func (api *API) Serve() *http.Server {
 	server := http.Server{
 		Addr:    fmt.Sprintf(":%d", api.config.Port),
-		Handler: loggingMiddleware(api.router),
+		Handler: loggingMiddleware(api.logger, api.router),
 	}
 
 	go func() {
@@ -192,7 +197,8 @@ func (api *API) Serve() *http.Server {
 		}
 
 		if err != http.ErrServerClosed {
-			log.Fatal("ListenAndServe:", err)
+			api.logger.Error("ListenAndServe failed", "err", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -239,7 +245,7 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	api.configLock.RLock()
 	defer api.configLock.RUnlock()
 
-	loggingMiddleware(api.router).ServeHTTP(w, r)
+	loggingMiddleware(api.logger, api.router).ServeHTTP(w, r)
 }
 
 // Return the token store.

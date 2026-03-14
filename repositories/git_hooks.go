@@ -2,7 +2,7 @@ package repositories
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -131,10 +131,10 @@ func (repo *GitRepository) installHook(hookDir string, hookData *gitHookData, fo
 			defer func() {
 				// Something went wrong so we are going to try to restore the
 				// filesystem to near its original state.
-				log.Printf(`Restoring filesystem to original state for hook "%s"`, hookData.HookName)
+				slog.Info("restoring filesystem to original state for hook", "hook", hookData.HookName)
 				if err != nil {
 					if err = os.Rename(renamedPath, dispatchPath); err != nil {
-						log.Println("Could not restore filesystem after error: ", err.Error())
+						slog.Error("could not restore filesystem after error", "err", err)
 					}
 
 				}
