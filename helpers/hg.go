@@ -2,10 +2,11 @@ package helpers
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	hg "bitbucket.org/gohg/gohg"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/reviewboard/rb-gateway/repositories"
@@ -14,6 +15,19 @@ import (
 const (
 	hgBin = "hg"
 )
+
+// HgClient is a thin wrapper around the hg command-line tool for testing.
+type HgClient struct {
+	// Path is the root directory of the repository.
+	Path string
+}
+
+// RunHg executes an hg command in the repository directory.
+func (c *HgClient) RunHg(args ...string) ([]byte, error) {
+	cmd := exec.Command(hgBin, args...)
+	cmd.Dir = c.Path
+	return cmd.CombinedOutput()
+}
 
 // Create a Mercurial repository for testing.
 //
@@ -24,14 +38,14 @@ const (
 // ```go
 //
 //	func Test(t *testing.T) {
-//	    repo, hgClient := testing.CreateHgtRepo(t, "repo-name")
+//	    repo, hgClient := testing.CreateHgRepo(t, "repo-name")
 //	    defer testing.CleanupHgRepo(t, hgClient)
 //
 //	    // ...
 //	}
 //
 // ```
-func CreateHgRepo(t *testing.T, name string) (*repositories.HgRepository, *hg.HgClient) {
+func CreateHgRepo(t *testing.T, name string) (*repositories.HgRepository, *HgClient) {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -41,8 +55,9 @@ func CreateHgRepo(t *testing.T, name string) (*repositories.HgRepository, *hg.Hg
 	path, err = filepath.EvalSymlinks(path)
 	assert.Nil(err)
 
-	client := hg.NewHgClient()
-	assert.Nil(client.Connect(hgBin, path, nil, true))
+	client := &HgClient{Path: path}
+	_, err = client.RunHg("init", path)
+	assert.Nil(err)
 
 	repo := repositories.HgRepository{
 		RepositoryInfo: repositories.RepositoryInfo{
@@ -55,18 +70,17 @@ func CreateHgRepo(t *testing.T, name string) (*repositories.HgRepository, *hg.Hg
 }
 
 // Clean up a created Mercurial repository.
-func CleanupHgRepo(t *testing.T, client *hg.HgClient) {
+func CleanupHgRepo(t *testing.T, client *HgClient) {
 	t.Helper()
 
-	client.Disconnect()
-	err := os.RemoveAll(client.RepoRoot())
+	err := os.RemoveAll(client.Path)
 	assert.Nil(t, err)
 }
 
 // Create a new commit with some files, returning the commit ID.
 //
 // Callers can compare committed file contents with the result of `helpers.GetRepoFiles`.
-func SeedHgRepo(t *testing.T, repo *repositories.HgRepository, client *hg.HgClient) string {
+func SeedHgRepo(t *testing.T, repo *repositories.HgRepository, client *HgClient) string {
 	t.Helper()
 
 	CreateAndAddFilesHg(t, repo.Path, client, repoFiles)
@@ -77,11 +91,11 @@ func SeedHgRepo(t *testing.T, repo *repositories.HgRepository, client *hg.HgClie
 // Create a new bookmark with some test files, returning the commit ID.
 //
 // Callers can compare committed file contents with the result of `helpers.GetRepoFiles`.
-func SeedHgBookmark(t *testing.T, repo *repositories.HgRepository, client *hg.HgClient) string {
+func SeedHgBookmark(t *testing.T, repo *repositories.HgRepository, client *HgClient) string {
 	t.Helper()
 	assert := assert.New(t)
 
-	_, err := client.ExecCmd([]string{"bookmark", "test-bookmark"})
+	_, err := client.RunHg("bookmark", "test-bookmark")
 	assert.Nil(err)
 
 	CreateAndAddFilesHg(t, repo.Path, client, branchFiles)
@@ -89,7 +103,7 @@ func SeedHgBookmark(t *testing.T, repo *repositories.HgRepository, client *hg.Hg
 	return CommitHg(t, client, "Branch commit message", DefaultAuthor)
 }
 
-func CreateAndAddFilesHg(t *testing.T, repoPath string, client *hg.HgClient, files map[string][]byte) {
+func CreateAndAddFilesHg(t *testing.T, repoPath string, client *HgClient, files map[string][]byte) {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -98,60 +112,60 @@ func CreateAndAddFilesHg(t *testing.T, repoPath string, client *hg.HgClient, fil
 		err := os.WriteFile(path, content, 0644)
 		assert.Nil(err)
 
-		_, err = client.ExecCmd([]string{"add", filename})
+		_, err = client.RunHg("add", filename)
 		assert.Nil(err)
 	}
 }
 
-func CommitHg(t *testing.T, client *hg.HgClient, message, author string) string {
+func CommitHg(t *testing.T, client *HgClient, message, author string) string {
 	t.Helper()
 
-	_, err := client.ExecCmd([]string{
+	_, err := client.RunHg(
 		"commit",
 		"-m", message,
 		"-u", author,
-	})
+	)
 	assert.Nil(t, err)
 
 	return GetHgHead(t, client)
 }
 
-func GetHgHead(t *testing.T, client *hg.HgClient) string {
+func GetHgHead(t *testing.T, client *HgClient) string {
 	t.Helper()
 
-	id, err := client.ExecCmd([]string{
+	id, err := client.RunHg(
 		"log",
 		"--rev", ".",
 		"--template", "{node}",
-	})
+	)
 	assert.Nil(t, err)
 
-	return string(id)
+	return strings.TrimSpace(string(id))
 }
 
-func CreateHgTag(t *testing.T, client *hg.HgClient, node, tag, message, author string) string {
+func CreateHgTag(t *testing.T, client *HgClient, node, tag, message, author string) string {
 	t.Helper()
 
-	_, err := client.ExecCmd([]string{
+	_, err := client.RunHg(
 		"tag",
 		"--rev", node,
 		"-m", message,
 		"-u", author,
 		tag,
-	})
+	)
 	assert.Nil(t, err)
 
 	return GetHgHead(t, client)
 
 }
 
-func CreateHgBookmark(t *testing.T, client *hg.HgClient, node, bookmark string) {
+func CreateHgBookmark(t *testing.T, client *HgClient, node, bookmark string) {
 	t.Helper()
 
-	_, err := client.ExecCmd([]string{
+	_, err := client.RunHg(
 		"bookmark",
 		"--rev", node,
 		bookmark,
-	})
+	)
 	assert.Nil(t, err)
 }

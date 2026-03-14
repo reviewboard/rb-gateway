@@ -3,10 +3,10 @@ package integration_tests
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
-	hg "bitbucket.org/gohg/gohg"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/reviewboard/rb-gateway/helpers"
@@ -37,7 +37,7 @@ func TestIntegrationForHgHooks(t *testing.T) {
 	helpers.CreateAndAddFilesHg(t, repo.Path, client, map[string][]byte{"foo": []byte("foo")})
 	origHead := helpers.CommitHg(t, client, "Initial commit", helpers.DefaultAuthor)
 
-	rsp, err := client.Push(nil, []string{"default"})
+	rsp, err := client.RunHg("push", "default")
 	assert.Nil(err)
 
 	fmt.Printf("Response after first push:\n%s", string(rsp))
@@ -45,7 +45,7 @@ func TestIntegrationForHgHooks(t *testing.T) {
 	helpers.CreateAndAddFilesHg(t, repo.Path, client, map[string][]byte{"bar": []byte("bar")})
 	newHead := helpers.CommitHg(t, client, "New commit", helpers.DefaultAuthor)
 
-	rsp, err = client.Push(nil, []string{"default"})
+	rsp, err = client.RunHg("push", "default")
 	assert.Nil(err)
 
 	fmt.Printf("Response after second push:\n%s", string(rsp))
@@ -76,15 +76,16 @@ func TestIntegrationForHgHooks(t *testing.T) {
 	runTests(t, cases, upstream, hook)
 }
 
-func setupBareHgRepository(t *testing.T) (*repositories.HgRepository, *hg.HgClient) {
+func setupBareHgRepository(t *testing.T) (*repositories.HgRepository, *helpers.HgClient) {
 	t.Helper()
 	assert := assert.New(t)
 
 	repoDir, err := os.MkdirTemp("", "rb-gateway-bare-repo-")
 	assert.Nil(err)
 
-	client := hg.NewHgClient()
-	assert.Nil(client.Connect("hg", repoDir, nil, true))
+	client := &helpers.HgClient{Path: repoDir}
+	_, err = client.RunHg("init", repoDir)
+	assert.Nil(err)
 
 	repo := repositories.HgRepository{
 		RepositoryInfo: repositories.RepositoryInfo{
@@ -96,17 +97,18 @@ func setupBareHgRepository(t *testing.T) (*repositories.HgRepository, *hg.HgClie
 	return &repo, client
 }
 
-func cloneHgUpstream(t *testing.T, upstream *hg.HgClient) (*repositories.HgRepository, *hg.HgClient) {
+func cloneHgUpstream(t *testing.T, upstream *helpers.HgClient) (*repositories.HgRepository, *helpers.HgClient) {
 	t.Helper()
 	assert := assert.New(t)
 
 	cloneDir, err := os.MkdirTemp("", "rb-gateway-clone-repo-")
 	assert.Nil(err)
 
-	assert.Nil(upstream.Clone(nil, []string{upstream.RepoRoot(), cloneDir}))
+	cloneCmd := exec.Command("hg", "clone", upstream.Path, cloneDir)
+	_, err = cloneCmd.CombinedOutput()
+	assert.Nil(err)
 
-	client := hg.NewHgClient()
-	assert.Nil(client.Connect("hg", cloneDir, nil, false))
+	client := &helpers.HgClient{Path: cloneDir}
 
 	repo := repositories.HgRepository{
 		RepositoryInfo: repositories.RepositoryInfo{

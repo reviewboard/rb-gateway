@@ -24,7 +24,7 @@ func TestHgGetPath(t *testing.T) {
 	repo, client := helpers.CreateHgRepo(t, "hg-repo")
 	defer helpers.CleanupHgRepo(t, client)
 
-	assert.Equal(t, repo.GetPath(), client.RepoRoot())
+	assert.Equal(t, repo.GetPath(), client.Path)
 }
 
 func TestHgGetFile(t *testing.T) {
@@ -111,7 +111,7 @@ func TestHgGetBranches(t *testing.T) {
 	assert.Equal("test-bookmark", branches[1].Name)
 
 	for i := 0; i < len(branches); i++ {
-		output, err := client.ExecCmd([]string{"log", "-r", branches[i].Name, "--template", "{node}"})
+		output, err := client.RunHg("log", "-r", branches[i].Name, "--template", "{node}")
 		assert.Nil(err)
 		assert.Equal(string(output), branches[i].Id)
 	}
@@ -132,7 +132,7 @@ func TestHgGetBranchesNoBookmarks(t *testing.T) {
 	assert.Equal("default", branches[0].Name)
 
 	for i := 0; i < len(branches); i++ {
-		output, err := client.ExecCmd([]string{"log", "-r", branches[i].Name, "--template", "{node}"})
+		output, err := client.RunHg("log", "-r", branches[i].Name, "--template", "{node}")
 		assert.Nil(err)
 		assert.Equal(string(output), branches[i].Id)
 	}
@@ -160,7 +160,7 @@ func TestHgGetCommits(t *testing.T) {
 		revisions = append(revisions, commit.Id)
 	}
 
-	records, err := repo.Log(client,
+	records, err := repo.Log(
 		[]string{
 			"{author}",
 			"{node}",
@@ -193,9 +193,9 @@ func TestHgGetCommit(t *testing.T) {
 	commit, err := repo.GetCommit("1")
 	assert.Nil(err)
 
-	output, err := client.ExecCmd([]string{
+	output, err := client.RunHg(
 		"diff", "--git", "-r", fmt.Sprintf("%s^:%s", commit.Id, commit.Id),
-	})
+	)
 	assert.Nil(err)
 
 	assert.Equal(commit.Diff, string(output))

@@ -3,7 +3,6 @@ module github.com/reviewboard/rb-gateway
 go 1.22
 
 require (
-	bitbucket.org/gohg/gohg v0.0.0-20140720204206-32d5a063a72b
 	github.com/foomo/htpasswd v0.0.0-20180422071726-cb63c4ac0e50
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-git/go-git/v5 v5.13.1

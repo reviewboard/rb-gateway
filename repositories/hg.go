@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
-	hg "bitbucket.org/gohg/gohg"
 	"gopkg.in/ini.v1"
 	"github.com/kballard/go-shellquote"
 
@@ -47,18 +47,37 @@ func (repo *HgRepository) GetScm() string {
 	return "hg"
 }
 
-// Create a new client for the repository.
-//
-// The caller is responsible for calling Client.Disconnect() when finished.
-func (repo *HgRepository) Client() (*hg.HgClient, error) {
-	client := hg.NewHgClient()
-	err := client.Connect(hgBin, repo.Path, nil, false)
+// hgResult holds the output and any error from an hg command.
+type hgResult struct {
+	output []byte
+	err    error
+}
 
+// runHg executes an hg command in the repository directory and returns its
+// combined output. If the command fails, the output is still available in the
+// returned error via hgError.
+func (repo *HgRepository) runHg(args ...string) ([]byte, error) {
+	cmd := exec.Command(hgBin, args...)
+	cmd.Dir = repo.Path
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, err
+		return output, &hgError{output: output, err: err}
 	}
+	return output, nil
+}
 
-	return client, nil
+// hgError wraps an exec error with the command's output for inspection.
+type hgError struct {
+	output []byte
+	err    error
+}
+
+func (e *hgError) Error() string {
+	return fmt.Sprintf("%s: %s", e.err, string(e.output))
+}
+
+func (e *hgError) Unwrap() error {
+	return e.err
 }
 
 // Return the contents of the requested file.
@@ -66,13 +85,7 @@ func (repo *HgRepository) Client() (*hg.HgClient, error) {
 // On success, it returns the file contents in a byte array. On failure, the
 // error will be returned.
 func (repo *HgRepository) GetFile(filepath string) ([]byte, error) {
-	client, err := repo.Client()
-	if err != nil {
-		return nil, err
-	}
-	defer client.Disconnect()
-	hgcmd := []string{"cat", filepath}
-	return client.ExecCmd(hgcmd)
+	return repo.runHg("cat", filepath)
 }
 
 // Return the contents of the requested file at the given changeset.
@@ -80,14 +93,7 @@ func (repo *HgRepository) GetFile(filepath string) ([]byte, error) {
 // On success, it returns the file contents in a byte array. On failure, the
 // error will be returned.
 func (repo *HgRepository) GetFileByCommit(changeset, filepath string) ([]byte, error) {
-	client, err := repo.Client()
-	if err != nil {
-		return nil, err
-	}
-	defer client.Disconnect()
-
-	hgcmd := []string{"cat", "-r", changeset, filepath}
-	return client.ExecCmd(hgcmd)
+	return repo.runHg("cat", "-r", changeset, filepath)
 }
 
 // Return whther or not a file exists.
@@ -95,13 +101,7 @@ func (repo *HgRepository) GetFileByCommit(changeset, filepath string) ([]byte, e
 // It returns true if the file exists, false otherwise. On failure, the error
 // will also be returned.
 func (repo *HgRepository) FileExists(filepath string) (bool, error) {
-	client, err := repo.Client()
-	if err != nil {
-		return false, err
-	}
-	defer client.Disconnect()
-
-	if _, err = client.ExecCmd([]string{"cat", filepath}); err != nil {
+	if _, err := repo.runHg("cat", filepath); err != nil {
 		if isNotExist(err) {
 			return false, nil
 		} else {
@@ -117,18 +117,12 @@ func (repo *HgRepository) FileExists(filepath string) (bool, error) {
 // It returns true if the file exists, false otherwise. On failure, the error
 // will also be returned.
 func (repo *HgRepository) FileExistsByCommit(changeset, filepath string) (bool, error) {
-	client, err := repo.Client()
-	if err != nil {
-		return false, err
-	}
-	defer client.Disconnect()
-
-	_, err = client.ExecCmd([]string{
+	_, err := repo.runHg(
 		"cat",
 		"-r", changeset,
 		"--template", "",
 		filepath,
-	})
+	)
 	if err != nil {
 		if isNotExist(err) {
 			return false, nil
@@ -146,26 +140,20 @@ func (repo *HgRepository) FileExistsByCommit(changeset, filepath string) (bool, 
 //
 // On failure, the error will also be returned.
 func (repo *HgRepository) GetBranches() ([]Branch, error) {
-	client, err := repo.Client()
-	if err != nil {
-		return nil, err
-	}
-	defer client.Disconnect()
-
-	output, err := client.ExecCmd([]string{
+	output, err := repo.runHg(
 		"branches",
 		"--template", "{branch}\\x1f{node}\\x1e",
-	})
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	branchRecords := strings.Split(strings.TrimRight(string(output), "\x1e"), "\x1e")
 
-	output, err = client.ExecCmd([]string{
+	output, err = repo.runHg(
 		"bookmarks",
 		"--template", "{bookmark}\\x1f{node}\\x1e",
-	})
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +189,7 @@ func (repo *HgRepository) GetCommits(branch string, start string) ([]CommitInfo,
 		start = branch
 	}
 
-	records, err := repo.Log(nil,
+	records, err := repo.Log(
 		[]string{
 			"{author}",
 			"{node}",
@@ -236,13 +224,7 @@ func (repo *HgRepository) GetCommits(branch string, start string) ([]CommitInfo,
 //
 // On failure, the error will also be returned.
 func (repo *HgRepository) GetCommit(commitId string) (*Commit, error) {
-	client, err := repo.Client()
-	if err != nil {
-		return nil, err
-	}
-	defer client.Disconnect()
-
-	records, err := repo.Log(client,
+	records, err := repo.Log(
 		[]string{
 			"{author}",
 			"{node}",
@@ -259,11 +241,11 @@ func (repo *HgRepository) GetCommit(commitId string) (*Commit, error) {
 		return nil, err
 	}
 
-	diff, err := client.ExecCmd([]string{
+	diff, err := repo.runHg(
 		"diff",
 		"--git",
 		"--rev", fmt.Sprintf("%s^:%s", commitId, commitId),
-	})
+	)
 
 	record := records[0]
 	commit := Commit{
@@ -280,11 +262,7 @@ func (repo *HgRepository) GetCommit(commitId string) (*Commit, error) {
 	return &commit, nil
 }
 
-// A convencience method for calling `hg log` and extracting the results.
-//
-// `client` may be nil, in which case a client will be allocated for the call
-// to log that will be deallocated once the emthod finishes. Otherwise, the
-// provided client will be used.
+// A convenience method for calling `hg log` and extracting the results.
 //
 // `fields` is a list of template parameters. They will be used to generate the
 // `--template` argument to `hg log`. [Details on templating in Mercurial][1].
@@ -293,19 +271,10 @@ func (repo *HgRepository) GetCommit(commitId string) (*Commit, error) {
 // parameters in `fields` for each revision in `revisions`.
 //
 // [1]: https://www.mercurial-scm.org/repo/hg/help/templates
-func (repo *HgRepository) Log(client *hg.HgClient, fields, revisions []string, args ...string) ([][]string, error) {
+func (repo *HgRepository) Log(fields, revisions []string, args ...string) ([][]string, error) {
 	nFields := len(fields)
 	if nFields == 0 {
 		return nil, nil
-	}
-
-	if client == nil {
-		var err error
-		client, err = repo.Client()
-		if err != nil {
-			return nil, err
-		}
-		defer client.Disconnect()
 	}
 
 	format := fmt.Sprintf("%s\\x1e", strings.Join(fields, "\\x1f"))
@@ -317,7 +286,7 @@ func (repo *HgRepository) Log(client *hg.HgClient, fields, revisions []string, a
 	}
 	command = append(command, args...)
 
-	output, err := client.ExecCmd(command)
+	output, err := repo.runHg(command...)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +327,6 @@ func (repo *HgRepository) ParseEventPayload(event string, input io.Reader) (even
 
 func (repo *HgRepository) parsePushEvent(first_node, last_node string) (events.Payload, error) {
 	records, err := repo.Log(
-		nil,
 		[]string{
 			"{node}",
 			"{desc}",
@@ -406,13 +374,12 @@ func (repo *HgRepository) parsePushEvent(first_node, last_node string) (events.P
 }
 
 func (repo *HgRepository) InstallHooks(cfgPath string, force bool) error {
-	client, err := repo.Client()
+	output, err := repo.runHg("root")
 	if err != nil {
 		return err
 	}
-	defer client.Disconnect()
 
-	root := client.RepoRoot()
+	root := strings.TrimSpace(string(output))
 	hgrcPath := filepath.Join(root, ".hg", "hgrc")
 
 	hgrc, err := ini.Load(hgrcPath)
