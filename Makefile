@@ -12,14 +12,13 @@ deps:
 	go mod download
 
 test:
-	@$(eval PKGS := $(shell go list ./... | sed -E 's#github.com/reviewboard/rb-gateway#.#' | grep -v integration_tests))
-	go test $(PKGS)
+	gotestsum --format testdox ./...
 
 integration-tests:
 	$(eval TMPDIR := $(shell mktemp -d))
 	go build $(LDFLAGS) -o $(TMPDIR)/rb-gateway
-	-env RBGATEWAY_PATH=$(TMPDIR)/rb-gateway go test ./integration_tests
-	rm -rf $(TMPDIR)
+	env RBGATEWAY_PATH=$(TMPDIR)/rb-gateway gotestsum --format testdox -- -tags integration ./integration_tests; \
+		rc=$$?; rm -rf $(TMPDIR); exit $$rc
 
 format:
 	go fmt ./...
