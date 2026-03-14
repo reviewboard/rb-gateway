@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/reviewboard/rb-gateway/config"
 	"github.com/reviewboard/rb-gateway/repositories"
@@ -45,7 +46,8 @@ func TriggerWebhooks(configPath, repoName, event string) {
 		os.Exit(1)
 	}
 
-	err = repositories.InvokeAllHooks(http.DefaultClient, store, event, repository, payload)
+	client := &http.Client{Timeout: 30 * time.Second}
+	err = repositories.InvokeAllHooks(client, store, event, repository, payload)
 	if err != nil {
 		slog.Error("error invoking hooks", "err", err)
 		os.Exit(1)
