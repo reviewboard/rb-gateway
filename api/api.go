@@ -10,11 +10,9 @@ import (
 	"time"
 
 	auth "github.com/abbot/go-http-auth"
-	"github.com/gorilla/mux"
 
 	"github.com/reviewboard/rb-gateway/api/tokens"
 	"github.com/reviewboard/rb-gateway/config"
-	"github.com/reviewboard/rb-gateway/repositories"
 	"github.com/reviewboard/rb-gateway/repositories/hooks"
 )
 
@@ -28,20 +26,6 @@ const (
 	repoContextKey contextKey = "repo"
 )
 
-type routingEntry struct {
-	methods []string
-	path    string
-	handler http.Handler
-}
-
-func addRoutes(router *mux.Router, routes []routingEntry) {
-	for _, route := range routes {
-		router.Path(route.path).
-			Methods(route.methods...).
-			Handler(route.handler)
-	}
-}
-
 type API struct {
 	// A lock for reading/writing `config`.
 	configLock sync.RWMutex
@@ -50,7 +34,7 @@ type API struct {
 	config *config.Config
 
 	// The server router.
-	router *mux.Router
+	router *http.ServeMux
 
 	// A lock for reading from/writing to the hook store.
 	hookStoreLock sync.RWMutex
@@ -72,7 +56,7 @@ type API struct {
 func New(cfg *config.Config) (*API, error) {
 	api := API{
 		config:        &config.Config{},
-		router:        mux.NewRouter(),
+		router:        http.NewServeMux(),
 		authenticator: auth.NewBasicAuthenticator("RB Gateway", nil),
 		logger:        slog.Default(),
 	}
@@ -81,38 +65,60 @@ func New(cfg *config.Config) (*API, error) {
 		return nil, err
 	}
 
-	api.router.Path("/session").
-		Methods("GET", "POST").
-		HandlerFunc(api.authenticator.Wrap(api.getSession))
+	// Session endpoint uses basic auth.
+	api.router.HandleFunc("GET /session", api.authenticator.Wrap(api.getSession))
+	api.router.HandleFunc("POST /session", api.authenticator.Wrap(api.getSession))
 
-	// The following routes all require token authorization.
-	repoRouter := api.router.PathPrefix("/repos/{repo}").Subrouter()
-	repoRouter.Use(api.withAuthorizationRequired)
-	repoRouter.Use(api.withRepository)
+	// Repository routes (require token auth + repo middleware).
+	api.router.Handle("GET /repos/{repo}/branches", api.withAuth(api.withRepo(api.getBranches)))
+	api.router.Handle("GET /repos/{repo}/branches/{branch}/commits", api.withAuth(api.withRepo(api.getCommits)))
+	api.router.Handle("GET /repos/{repo}/commits/{commitID}", api.withAuth(api.withRepo(api.getCommit)))
+	api.router.Handle("GET /repos/{repo}/commits/{commitID}/path/{path...}", api.withAuth(api.withRepo(api.getFileByCommit)))
+	api.router.Handle("HEAD /repos/{repo}/commits/{commitID}/path/{path...}", api.withAuth(api.withRepo(api.getFileExistsByCommit)))
+	api.router.Handle("GET /repos/{repo}/file/{fileID}", api.withAuth(api.withRepo(api.getFile)))
+	api.router.Handle("HEAD /repos/{repo}/file/{fileID}", api.withAuth(api.withRepo(api.getFileExists)))
+	api.router.Handle("GET /repos/{repo}/path", api.withAuth(api.withRepo(api.getPath)))
 
-	addRoutes(repoRouter, []routingEntry{
-		{[]string{"GET"}, "/branches", http.HandlerFunc(api.getBranches)},
-		{[]string{"GET"}, "/branches/{branch}/commits", http.HandlerFunc(api.getCommits)},
-		{[]string{"GET"}, "/commits/{commit-id}", http.HandlerFunc(api.getCommit)},
-		{[]string{"GET"}, "/commits/{commit-id}/path/{path}", http.HandlerFunc(api.getFileByCommit)},
-		{[]string{"HEAD"}, "/commits/{commit-id}/path/{path}", http.HandlerFunc(api.getFileExistsByCommit)},
-		{[]string{"GET"}, "/file/{file-id}", http.HandlerFunc(api.getFile)},
-		{[]string{"HEAD"}, "/file/{file-id}", http.HandlerFunc(api.getFileExists)},
-		{[]string{"GET"}, "/path", http.HandlerFunc(api.getPath)},
-	})
-
-	hookRouter := api.router.PathPrefix("/webhooks").Subrouter()
-	hookRouter.Use(api.withAuthorizationRequired)
-
-	addRoutes(hookRouter, []routingEntry{
-		{[]string{"GET"}, "", http.HandlerFunc(api.getHooks)},
-		{[]string{"POST"}, "", http.HandlerFunc(api.createHook)},
-		{[]string{"GET"}, "/{hook-id}", http.HandlerFunc(api.getHook)},
-		{[]string{"DELETE"}, "/{hook-id}", http.HandlerFunc(api.deleteHook)},
-		{[]string{"PATCH"}, "/{hook-id}", http.HandlerFunc(api.updateHook)},
-	})
+	// Webhook routes (require token auth).
+	api.router.Handle("GET /webhooks", api.withAuth(http.HandlerFunc(api.getHooks)))
+	api.router.Handle("POST /webhooks", api.withAuth(http.HandlerFunc(api.createHook)))
+	api.router.Handle("GET /webhooks/{hookID}", api.withAuth(http.HandlerFunc(api.getHook)))
+	api.router.Handle("DELETE /webhooks/{hookID}", api.withAuth(http.HandlerFunc(api.deleteHook)))
+	api.router.Handle("PATCH /webhooks/{hookID}", api.withAuth(http.HandlerFunc(api.updateHook)))
 
 	return &api, nil
+}
+
+// withAuth wraps a handler with token authorization.
+func (api *API) withAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if api.tokenStore.Get(r) == nil {
+			http.Error(w, "Authorization failed.", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// withRepo wraps a handler function with repository lookup middleware.
+func (api *API) withRepo(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		repoName := r.PathValue("repo")
+
+		if len(repoName) == 0 {
+			http.Error(w, "Repository not provided.", http.StatusBadRequest)
+			return
+		}
+
+		repo, exists := api.config.Repositories[repoName]
+		if !exists {
+			http.Error(w, "Repository not found.", http.StatusNotFound)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), repoContextKey, repo)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 // Update the configuration.
@@ -203,38 +209,6 @@ func (api *API) Serve() *http.Server {
 	}()
 
 	return &server
-}
-
-// A middleware for wrapping routes that require a repository.
-//
-// If the requested repository exists, it will be provided through the context
-// as `"repo"`. Otherwise, an appropriate error will be returned.
-func (api *API) withRepository(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		repoName := mux.Vars(r)["repo"]
-
-		var repo repositories.Repository
-		var exists bool
-
-		if len(repoName) == 0 {
-			http.Error(w, "Repository not provided.", http.StatusBadRequest)
-		} else if repo, exists = api.config.Repositories[repoName]; !exists {
-			http.Error(w, "Repository not found.", http.StatusNotFound)
-		} else {
-			ctx := context.WithValue(r.Context(), repoContextKey, repo)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		}
-	})
-}
-
-func (api *API) withAuthorizationRequired(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if api.tokenStore.Get(r) == nil {
-			http.Error(w, "Authorization failed.", http.StatusUnauthorized)
-		} else {
-			next.ServeHTTP(w, r)
-		}
-	})
 }
 
 // Serve a request.

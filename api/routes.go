@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	auth "github.com/abbot/go-http-auth"
-	"github.com/gorilla/mux"
 
 	"github.com/reviewboard/rb-gateway/repositories"
 	"github.com/reviewboard/rb-gateway/repositories/hooks"
@@ -65,8 +64,7 @@ func (api *API) getBranches(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/branches/<branch>/commits?start=<start>`
 func (api *API) getCommits(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
-	params := mux.Vars(r)
-	branch := params["branch"]
+	branch := r.PathValue("branch")
 	start := r.URL.Query().Get("start")
 
 	var commits []repositories.CommitInfo
@@ -92,8 +90,7 @@ func (api *API) getCommits(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/commit/<commit-id>`
 func (api *API) getCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
-	params := mux.Vars(r)
-	commitId := params["commit-id"]
+	commitId := r.PathValue("commitID")
 
 	var commit *repositories.Commit
 	var response []byte
@@ -119,7 +116,7 @@ func (api *API) getCommit(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/file/<file-id>`
 func (api *API) getFile(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
-	objectId := mux.Vars(r)["file-id"]
+	objectId := r.PathValue("fileID")
 
 	var contents []byte
 	var err error
@@ -140,7 +137,7 @@ func (api *API) getFile(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/file/<file-id>`
 func (api *API) getFileExists(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
-	objectId := mux.Vars(r)["file-id"]
+	objectId := r.PathValue("fileID")
 
 	var exists bool
 	var err error
@@ -162,10 +159,9 @@ func (api *API) getFileExists(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
 func (api *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
-	params := mux.Vars(r)
 
-	commitId := params["commit-id"]
-	path := params["path"]
+	commitId := r.PathValue("commitID")
+	path := r.PathValue("path")
 
 	var contents []byte
 	var err error
@@ -190,10 +186,9 @@ func (api *API) getFileByCommit(w http.ResponseWriter, r *http.Request) {
 // URL: `/repos/<repo>/commits/<commit-id>/path/<path>`
 func (api *API) getFileExistsByCommit(w http.ResponseWriter, r *http.Request) {
 	repo := r.Context().Value(repoContextKey).(repositories.Repository)
-	params := mux.Vars(r)
 
-	commitId := params["commit-id"]
-	path := params["path"]
+	commitId := r.PathValue("commitID")
+	path := r.PathValue("path")
 
 	var exists bool
 	var err error
@@ -300,7 +295,7 @@ func (api *API) getHook(w http.ResponseWriter, r *http.Request) {
 	api.hookStoreLock.RLock()
 	defer api.hookStoreLock.RUnlock()
 
-	hookId := mux.Vars(r)["hook-id"]
+	hookId := r.PathValue("hookID")
 
 	var hook *hooks.Webhook
 	if hook = api.hookStore[hookId]; hook == nil {
@@ -324,7 +319,7 @@ func (api *API) deleteHook(w http.ResponseWriter, r *http.Request) {
 	api.hookStoreLock.Lock()
 	defer api.hookStoreLock.Unlock()
 
-	hookId := mux.Vars(r)["hook-id"]
+	hookId := r.PathValue("hookID")
 
 	var hook *hooks.Webhook
 	if hook = api.hookStore[hookId]; hook == nil {
@@ -347,7 +342,7 @@ func (api *API) updateHook(w http.ResponseWriter, r *http.Request) {
 	api.hookStoreLock.Lock()
 	defer api.hookStoreLock.Unlock()
 
-	hookId := mux.Vars(r)["hook-id"]
+	hookId := r.PathValue("hookID")
 
 	var hook *hooks.Webhook
 	var exists bool
