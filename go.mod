@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/foomo/htpasswd v0.0.0-20180422071726-cb63c4ac0e50
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-git/go-git/v5 v5.17.0
+	github.com/go-git/go-git/v5 v5.17.2
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.45.0
