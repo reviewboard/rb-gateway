@@ -1,0 +1,81 @@
+============================
+RB Gateway 2.0 Release Notes
+============================
+
+**Release date**: TBD
+
+
+New Features
+============
+
+* Added support for bcrypt-encoded passwords in the htpasswd file.
+
+  Plain-text passwords continue to work, but bcrypt hashes are now the
+  recommended way to store credentials. These can be created with
+  :command:`htpasswd -B`.
+
+* Added a configurable timeout on outbound webhook deliveries.
+
+  Previously, a slow or unresponsive Review Board server (or any other
+  webhook target) could tie up rb-gateway goroutines indefinitely. Webhook
+  HTTP requests now time out so transient networking issues no longer back
+  up the service.
+
+* Switched logging over to structured logging via ``slog``.
+
+  Log records now carry key/value fields rather than free-form strings,
+  making them easier to parse and forward to log aggregators.
+
+
+Bug Fixes
+=========
+
+* Fixed a crash when listing branches for Mercurial repositories with no
+  bookmarks. (:bug:`4792`)
+
+* Fixed startup when ``webhooks.json`` is missing or empty.
+
+  rb-gateway used to fail to start if the configured webhook store file
+  did not exist. It will now start with an empty webhook store in this
+  case. (:bug:`4721`)
+
+* Fixed parsing of empty ``tokens.dat`` files.
+
+  An empty token store file is now treated as an empty store rather than
+  a parse error.
+
+
+Modernization and Internals
+===========================
+
+A large portion of this release is internal cleanup that reduces the
+external dependency footprint and brings the codebase up to modern Go
+conventions. None of these should be visible to users of the service:
+
+* Replaced ``gorilla/mux`` with the standard library's
+  ``net/http.ServeMux``.
+
+* Replaced ``kingpin`` with the standard library's ``flag`` package for
+  CLI argument parsing.
+
+* Replaced ``go-http-auth`` with a custom HTTP Basic auth middleware.
+
+* Replaced the unmaintained ``gohg`` package with direct invocation of
+  the ``hg`` command.
+
+* Replaced the deprecated ``io/ioutil`` APIs with their modern
+  equivalents (``io.ReadAll``, ``os.ReadFile``, ``os.WriteFile``,
+  ``os.MkdirTemp``, ``os.CreateTemp``).
+
+* Updated ``go-git`` and other dependencies to address several published
+  CVEs and a runtime-panic advisory in ``go-git`` 5.17.0.
+
+
+
+Contributors
+============
+
+* Beth Rennie
+* Christian Hammond
+* David Trowbridge
+* Michelle Aubin

@@ -4,6 +4,21 @@
 Installing Review Board Gateway
 ===============================
 
+Requirements
+============
+
+To serve repositories with ``rb-gateway``, you'll need:
+
+* Git_ (for serving Git repositories)
+* Mercurial_ (for serving Mercurial repositories)
+
+.. _Git: https://git-scm.com/
+.. _Mercurial: https://www.mercurial-scm.org/
+
+
+Installing the Binary
+=====================
+
 ``rb-gateway`` is currently distributed as a standalone binary. Installation
 consists of a few simple steps:
 
@@ -14,18 +29,20 @@ consists of a few simple steps:
    webhook data. On Linux, a good place for this would be
    :file:`/var/lib/rb-gateway`.
 3. Create the :ref:`configuration file <rb-gateway-configuration>`.
-4. Set up ``rb-gateway`` to run :ref:`as a service <rb-gateway-service>`.
+4. Set up ``rb-gateway`` to :ref:`run as a service <rb-gateway-service>`.
 
 
 .. _Download the latest version: https://www.reviewboard.org/downloads/rbgateway/
 
 
 
-For example, to get started quickly on Linux::
+For example, to get started quickly on Linux:
 
-    $ sudo curl https://www.reviewboard.org/downloads/rbgateway/latest/linux_amd64/ \
-           -O /usr/local/bin/rb-gateway
-    $ sudo chmod +x /usr/local/bin/rb-gateway
-    $ sudo mkdir /var/lib/rb-gateway
-    $ sudo mkdir /etc/rb-gateway
-    $ sudo vim /etc/rb-gateway/rb-gateway.conf
+.. code-block:: console
+
+   $ sudo curl https://www.reviewboard.org/downloads/rbgateway/latest/linux_amd64/ \
+          -O /usr/local/bin/rb-gateway
+   $ sudo chmod +x /usr/local/bin/rb-gateway
+   $ sudo mkdir /var/lib/rb-gateway
+   $ sudo mkdir /etc/rb-gateway
+   $ sudo vim /etc/rb-gateway/config.json

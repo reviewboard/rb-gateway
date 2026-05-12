@@ -15,3 +15,4 @@ a service with a smaller footprint that can provide the same functionality.
 
    installation/index
    configuration/index
+   running/index

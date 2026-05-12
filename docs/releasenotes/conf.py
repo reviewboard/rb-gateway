@@ -30,7 +30,6 @@ from pkg_resources import parse_version
 extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'beanbag_docutils.sphinx.ext.django_utils',
     'beanbag_docutils.sphinx.ext.extlinks',
     'beanbag_docutils.sphinx.ext.http_role',
     'beanbag_docutils.sphinx.ext.retina_images',
@@ -165,6 +164,6 @@ intersphinx_mapping = {
 }
 
 extlinks = {
-    'bug': ('https://www.reviewboard.org/bugs/%s', 'Bug #'),
-    'cve': ('http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-%s', 'CVE-'),
+    'bug': ('https://www.reviewboard.org/bugs/%s', 'Bug #%s'),
+    'cve': ('http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-%s', 'CVE-%s'),
 }

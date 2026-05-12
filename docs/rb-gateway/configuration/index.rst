@@ -29,54 +29,72 @@ service, and includes an array listing each of the local repositories which
     }
 
 
+Relative paths in the configuration file are resolved relative to the
+directory containing the configuration file.
+
 The available configuration keys are as follows:
 
 ``htpasswdPath`` (string)
-    The path to the password file. Details on this can be found below.
+    The path to the :ref:`password file <rb-gateway-htpasswd-file>`.
+
+    Defaults to :file:`htpasswd`.
 
 ``port`` (int)
-    The port for ``rb-gateway`` to listen on. If not specified, this will
-    default to 8888.
+    The port for ``rb-gateway`` to listen on.
 
-``repositories`` (array)
-    The list of all repositories to host with ``rb-gateway``. See below for
-    more details.
+    Defaults to ``8888``.
+
+``repositories`` (array of object)
+    The list of all repositories to host with ``rb-gateway``. This key is
+    required.
+
+    Each repository in the configuration file is a JSON_ object with the following
+    keys:
+
+    ``name`` (string)
+        The name to use for the repository. This is used for the configuration in
+        the Review Board admin UI when linking the repository, and appears in API
+        URLs.
+
+    ``path`` (string)
+        The path on disk to the local repository.
+
+    ``scm`` (string)
+        The type of repository. This can be either ``git`` or ``hg``.
 
 ``sslCertificate`` (string)
     The path to the SSL public certificate to use when HTTPS is enabled.
 
+    Required if ``useTLS`` is ``true``.
+
 ``sslKey`` (string)
     The path to the SSL private key to use when HTTPS is enabled.
+
+    Required if ``useTLS`` is ``true``.
 
 ``tokenStorePath`` (string)
     The path to a file where ``rb-gateway`` will store authentication sessions.
     The directory for this file must exist and be writable.
 
+    Defaults to ``tokens.dat``.
+
 ``useTLS`` (boolean)
     Whether to use HTTPS for communication. This requires a valid certificate
     specified in the ``sslCertificate`` and ``sslKey`` config options.
 
-``webhookStorePath`` (string):
-    The path to a file where ``rb-gateway`` will store configured webhooks. The
-    directory for this file must exist and be writable.
+    Defaults to ``false``.
 
+``webhookStorePath`` (string)
+    The path to the :ref:`WebHook configuration file
+    <rb-gateway-webhooks-configuration>`.
 
-Each repository in the configuration file is a JSON_ object with the following
-keys:
-
-``name`` (string)
-    The name to use for the repository. This is used for the configuration in
-    the Review Board admin UI when linking the repository.
-
-``path`` (string)
-    The path on disk to the local repository.
-
-``scm`` (string)
-    The type of repository. This can be either ``git`` or ``hg``.
+    Defaults to :file:`webhooks.json`.
 
 
 .. _JSON: https://www.json.org
 
+
+.. _rb-gateway-htpasswd-file:
 
 Password File
 =============
@@ -86,35 +104,58 @@ credentials. These credentials are used by the Review Board server to connect
 to the service. This file can be created or updated with Apache's
 :command:`htpasswd` tool or other widely-available third party tools.
 
+Passwords may be stored as bcrypt hashes (recommended) or in plain text. For
+example, to create a new htpasswd file with a bcrypt-hashed password:
+
+.. code-block:: console
+
+    $ htpasswd -Bc /etc/rb-gateway/htpasswd myuser
+
 
 .. _htpasswd: https://httpd.apache.org/docs/2.4/programs/htpasswd.html
 
 
-.. _rb-gateway-service:
+.. _rb-gateway-webhooks-configuration:
 
-Running rb-gateway as a Service
-===============================
+WebHooks File
+=============
 
-It's likely that you'll want to run ``rb-gateway`` as a service that starts
-when you boot the server. There are many ways of doing this depending on your
-particular environment, but one of the more common ones is systemd_. The below
-unit file example can be customized with the location of the rb-gateway binary
-and your config file:
+The WebHook configuration file is a JSON_ file containing a list of
+configurations for WebHooks which should be emitted when new code is pushed.
 
-.. code-block:: ini
+The available configuration keys are as follows. All keys are required.
 
-    [Unit]
-    Description=Review Board Gateway
-    After=network.target
+``enabled`` (boolean)
+    Whether the WebHook is enabled.
 
-    [Service]
-    User=rb-gateway
-    KillSignal=SIGTERM
-    ExecStart=/usr/local/bin/rb-gateway --config /etc/rb-gateway/rb-gateway.conf
-    ExecReload=/bin/kill -HUP $MAINPID
+``events`` (array of string)
+    The set of events to notify on. This currently only supports ``"push"``.
 
-    [Install]
-    WantedBy=multi-user.target
+``id`` (string)
+    A unique ID for the WebHook.
+
+``repos`` (array of string)
+    The set of repositories to trigger this WebHook configuration for.
+
+``secret`` (string)
+    A secret to use for generating an HMAC-SHA1 signature for the payload.
+
+``url`` (string)
+    The URL to dispatch the WebHook to.
 
 
-.. _systemd: https://www.freedesktop.org/wiki/Software/systemd/
+Example
+-------
+
+.. code-block:: javascript
+
+    [
+        {
+            "enabled": true,
+            "events": ["push"],
+            "id": "repo1-reviewboard",
+            "repos": ["repo1"],
+            "secret": "<secret from Review Board>",
+            "url": "https://reviewboard.example.com/repos/1/rbgateway/hooks/close-submitted/"
+        }
+    ]

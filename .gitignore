@@ -4,8 +4,8 @@ vendor/
 *.swp
 *.pyc
 
-config.json
-htpasswd
-rb-gateway
-tokens.dat
-webhooks.json
+/config.json
+/htpasswd
+/rb-gateway
+/tokens.dat
+/webhooks.json
